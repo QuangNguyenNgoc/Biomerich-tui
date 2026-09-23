@@ -71,10 +71,13 @@ class LogsScreen(VerticalScroll):
                 }
                 style = style_map.get(kind, "white")
 
-                prefix = f"[dim]{ts}[/dim] "
+                log_line = Text()
+                log_line.append(f"{ts} ", style="dim")
                 if account:
-                    prefix += f"[cyan]{account}[/cyan] "
-                activity_log.write(f"{prefix}[{style}]{text}[/{style}]")
+                    log_line.append(f"{account} ", style="cyan")
+                log_line.append(text, style=style)
+
+                activity_log.write(log_line)
 
             self._last_activity_id = head
         except Exception:
@@ -86,8 +89,8 @@ class LogsScreen(VerticalScroll):
             event_log = self.query_one("#event-log", RichLog)
             for ev in events:
                 self._last_event_id = max(self._last_event_id, ev.get("id", 0))
-                title = ev.get("title", "")
-                detail = ev.get("detail", "")
+                title = str(ev.get("title", ""))
+                detail = str(ev.get("detail", ""))
                 kind = ev.get("kind", "system")
 
                 color_map = {
@@ -98,6 +101,58 @@ class LogsScreen(VerticalScroll):
                     "system": "dim",
                 }
                 color = color_map.get(kind, "white")
-                event_log.write(f"[{color}]● {title}[/{color}]  {detail}")
+
+                ev_line = Text()
+                ev_line.append("● ", style=color)
+                ev_line.append(title, style=color)
+                ev_line.append(f"  {detail}")
+
+                event_log.write(ev_line)
+        except Exception:
+            pass
+
+        # Timeline
+        try:
+            from core.account_timeline import get_all_summaries
+            import datetime
+
+            summaries = get_all_summaries()
+            timeline_view = self.query_one("#timeline-view", Static)
+            if not summaries:
+                timeline_view.update(
+                    Panel(
+                        "[dim]No timeline data available yet.[/dim]", title="Timeline"
+                    )
+                )
+            else:
+                from rich.table import Table
+
+                table = Table(expand=True, box=None)
+                table.add_column("Account", style="cyan")
+                table.add_column("State", style="bold")
+                table.add_column("Duration", justify="right")
+
+                for account_id, summary in summaries.items():
+                    name = summary.get("name") or account_id
+                    current_state = summary.get("current_state")
+                    state_text = ""
+                    if current_state:
+                        st = current_state.get("state", "unknown")
+                        since = current_state.get("since", 0)
+                        dur = int(datetime.datetime.now().timestamp() - since)
+
+                        m, s = divmod(dur, 60)
+                        h, m = divmod(m, 60)
+                        dur_str = f"{h:02d}:{m:02d}:{s:02d}"
+
+                        color = (
+                            "green"
+                            if st == "running"
+                            else "dim" if st == "stopped" else "yellow"
+                        )
+                        state_text = f"[{color}]{st}[/{color}]"
+                        table.add_row(name, state_text, dur_str)
+
+                timeline_view.update(Panel(table, title="Account Timeline"))
         except Exception:
             pass

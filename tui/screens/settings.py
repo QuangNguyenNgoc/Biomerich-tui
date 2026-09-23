@@ -56,11 +56,12 @@ class SettingsScreen(VerticalScroll):
         margin-bottom: 1;
         border: solid $primary;
         padding: 1;
+        height: auto;
     }
 
     .setting-row {
-        height: 3;
-        padding: 0 1;
+        height: auto;
+        padding: 1 1;
     }
 
     .setting-label {
@@ -151,4 +152,5 @@ class SettingsScreen(VerticalScroll):
                     pass
 
         ctrl.save_config()
-        self.notify("Settings saved!", severity="information")
+        ctrl.register_hotkeys()
+        self.notify("Settings saved (Hotkeys re-bound)!", severity="information")

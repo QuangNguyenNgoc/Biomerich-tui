@@ -23,6 +23,7 @@ class PerformanceScreen(VerticalScroll):
         margin-bottom: 1;
         border: solid $primary;
         padding: 1;
+        height: auto;
     }
     """
 

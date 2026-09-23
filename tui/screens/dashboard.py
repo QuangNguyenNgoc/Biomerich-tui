@@ -89,12 +89,11 @@ class DashboardScreen(VerticalScroll):
 
         # Biome panel
         biome_panel = self.query_one("#biome-panel", Static)
-        state = ctrl.get_state()
-        accounts_state = state.get("accounts", [])
+        accounts_live = ctrl.get_live_accounts()
         biome_text = ""
-        for acc in accounts_state:
+        for acc in accounts_live:
             name = acc.get("name", "?")
-            biome = acc.get("biome", "Normal")
+            biome = acc.get("currentBiome") or "Normal"
             online = "🟢" if acc.get("online") else "🔴"
             biome_text += f"{online} {name}: [bold cyan]{biome}[/bold cyan]\n"
         if not biome_text:
@@ -116,11 +115,11 @@ class DashboardScreen(VerticalScroll):
         table.add_column("Biome", style="magenta")
         table.add_column("Window", style="yellow")
 
-        for i, acc in enumerate(accounts_state, 1):
+        for i, acc in enumerate(accounts_live, 1):
             status = "Online" if acc.get("online") else "Offline"
             status_style = "green" if acc.get("online") else "red"
-            biome = acc.get("biome", "-")
-            hwnd = "Bound" if acc.get("hwnd") else "Unbound"
+            biome = acc.get("currentBiome") or "-"
+            hwnd = "Bound" if acc.get("hwndKnown") else "Unbound"
             table.add_row(
                 str(i),
                 acc.get("name", "?"),
@@ -130,7 +129,6 @@ class DashboardScreen(VerticalScroll):
             )
 
         accounts_panel.update(Panel(table, border_style="blue"))
-
     def action_toggle_engine(self) -> None:
         """Toggle macro engine start/stop."""
         ctrl = self.app.controller

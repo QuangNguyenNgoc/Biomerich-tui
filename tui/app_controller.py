@@ -155,6 +155,29 @@ class AppController:
         """Get the full application state (config + engine state)."""
         return self.config.state()
 
+    def get_live_accounts(self) -> list:
+        """Merge static account config with live runtime data (online, biome)."""
+        state_accounts = self.config.state().get("accounts", [])
+        
+        # Get live runtime data from engine
+        runtime = []
+        try:
+            runtime = self.engine.account_runtime()
+        except Exception:
+            pass
+            
+        rt_map = {r.get("id"): r for r in runtime if r.get("id")}
+        
+        # Merge
+        for acc in state_accounts:
+            acc_id = acc.get("id")
+            rt_data = rt_map.get(acc_id, {})
+            acc["online"] = rt_data.get("online", False)
+            acc["currentBiome"] = rt_data.get("currentBiome", None)
+            acc["hwndKnown"] = rt_data.get("hwndKnown", False)
+            
+        return state_accounts
+
     def get_settings(self) -> dict:
         return dict(self.config.settings)
 
