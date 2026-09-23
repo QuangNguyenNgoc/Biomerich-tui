@@ -52,7 +52,7 @@ DISPLAY_NAMES = {
 }
 
 THUMBNAILS = {
-    "windy": "https://raw.githubusercontent.com/QuangNguyenNgoc/Biomerich-tui/main/assets/biome/WIND.png",
+    "windy": "https://raw.githubusercontent.com/QuangNguyenNgoc/Biomerich-tui/main/assets/biome/WINDY.png",
     "rainy": "https://raw.githubusercontent.com/QuangNguyenNgoc/Biomerich-tui/main/assets/biome/RAINY.gif",
     "snowy": "https://raw.githubusercontent.com/QuangNguyenNgoc/Biomerich-tui/main/assets/biome/SNOWY.gif",
     "sandstorm": "https://raw.githubusercontent.com/QuangNguyenNgoc/Biomerich-tui/main/assets/biome/SAND_STORM.jpg",
