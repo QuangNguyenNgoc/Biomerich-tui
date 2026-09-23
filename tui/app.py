@@ -18,7 +18,6 @@ from tui.screens.performance import PerformanceScreen
 from tui.screens.logs import LogsScreen
 from tui.screens.webhooks import WebhooksScreen
 
-
 # Navigation menu items
 NAV_ITEMS = [
     ("dashboard", "Dashboard", "1"),
@@ -127,6 +126,7 @@ class SolRichTUI(App):
         """Initialize the AppController (core business logic)."""
         try:
             from tui.app_controller import AppController
+
             self.controller = AppController()
             self.controller.on("engine_started", self._on_engine_state_change)
             self.controller.on("engine_stopped", self._on_engine_state_change)
