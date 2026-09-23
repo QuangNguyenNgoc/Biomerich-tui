@@ -2,6 +2,7 @@
 
 from textual.app import ComposeResult
 from textual.screen import Screen
+from textual.containers import VerticalScroll
 from textual.widgets import Static, Button, Input, Label, Switch
 from textual.containers import Vertical, Horizontal
 
@@ -9,7 +10,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 
-class WebhooksScreen(Screen):
+class WebhooksScreen(VerticalScroll):
     """Discord webhook CRUD and routing configuration."""
 
     DEFAULT_CSS = """

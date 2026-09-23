@@ -2,6 +2,7 @@
 
 from textual.app import ComposeResult
 from textual.screen import Screen
+from textual.containers import VerticalScroll
 from textual.widgets import Static, Button, Input, Label
 from textual.containers import Vertical, Horizontal
 
@@ -9,7 +10,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 
-class AccountsScreen(Screen):
+class AccountsScreen(VerticalScroll):
     """Account management: add, edit, delete, token input, launch."""
 
     DEFAULT_CSS = """

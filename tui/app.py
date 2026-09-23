@@ -5,7 +5,7 @@ This replaces the old main.py + bridge.py web UI with a full terminal UI.
 """
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Static, Button, Label
+from textual.widgets import Header, Footer, Static, Button, Label, ContentSwitcher
 from textual.containers import Horizontal, Vertical
 from textual.binding import Binding
 
@@ -17,6 +17,7 @@ from tui.screens.automation import AutomationScreen
 from tui.screens.performance import PerformanceScreen
 from tui.screens.logs import LogsScreen
 from tui.screens.webhooks import WebhooksScreen
+
 
 # Navigation menu items
 NAV_ITEMS = [
@@ -110,8 +111,9 @@ class SolRichTUI(App):
                     )
                     yield btn
 
-            with Vertical(id="content-area"):
-                yield Static(id="screen-mount-point")
+            with ContentSwitcher(initial="dashboard", id="content-area"):
+                for key, cls in SCREEN_MAP.items():
+                    yield cls(id=key)
 
         yield Footer()
 
@@ -125,7 +127,6 @@ class SolRichTUI(App):
         """Initialize the AppController (core business logic)."""
         try:
             from tui.app_controller import AppController
-
             self.controller = AppController()
             self.controller.on("engine_started", self._on_engine_state_change)
             self.controller.on("engine_stopped", self._on_engine_state_change)
@@ -173,22 +174,10 @@ class SolRichTUI(App):
             except Exception:
                 pass
 
-        # Mount the screen content
-        screen_cls = SCREEN_MAP.get(screen_name)
-        if screen_cls is None:
-            return
-
-        mount_point = self.query_one("#screen-mount-point", Static)
-        # Replace content by pushing/switching screen
-        # For simplicity, we use install_screen + switch_screen pattern
-        screen_id = f"scr-{screen_name}"
-        if not self.is_screen_installed(screen_id):
-            self.install_screen(screen_cls(), name=screen_id)
-
-        # Remove old mount point and push content screen
-        # Using Textual's screen stack for proper lifecycle
+        # Switch the active content
         try:
-            self.switch_screen(screen_id)
+            switcher = self.query_one("#content-area", ContentSwitcher)
+            switcher.current = screen_name
         except Exception:
             pass
 

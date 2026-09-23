@@ -2,6 +2,7 @@
 
 from textual.app import ComposeResult
 from textual.screen import Screen
+from textual.containers import VerticalScroll
 from textual.widgets import Header, Static, Button, Label
 from textual.containers import Vertical, Horizontal, Container
 
@@ -10,7 +11,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 
-class DashboardScreen(Screen):
+class DashboardScreen(VerticalScroll):
     """Main dashboard showing engine status, active biome, and account overview."""
 
     BINDINGS = [

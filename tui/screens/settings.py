@@ -2,6 +2,7 @@
 
 from textual.app import ComposeResult
 from textual.screen import Screen
+from textual.containers import VerticalScroll
 from textual.widgets import Static, Switch, Input, Select, Label, Button
 from textual.containers import Vertical, Horizontal
 
@@ -42,7 +43,7 @@ SETTING_GROUPS = {
 }
 
 
-class SettingsScreen(Screen):
+class SettingsScreen(VerticalScroll):
     """Grouped settings view with toggles and inputs."""
 
     DEFAULT_CSS = """

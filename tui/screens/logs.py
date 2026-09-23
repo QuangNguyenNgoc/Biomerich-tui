@@ -2,6 +2,7 @@
 
 from textual.app import ComposeResult
 from textual.screen import Screen
+from textual.containers import VerticalScroll
 from textual.widgets import Static, RichLog, TabbedContent, TabPane, Button
 from textual.containers import Vertical
 
@@ -9,7 +10,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 
-class LogsScreen(Screen):
+class LogsScreen(VerticalScroll):
     """Log viewer with tabs for activity, events, and timeline."""
 
     DEFAULT_CSS = """
