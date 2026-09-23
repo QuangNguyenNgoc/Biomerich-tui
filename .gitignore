@@ -1,0 +1,16 @@
+build/
+dist/
+tempCodeRunnerFile.py
+SolRich.zip
+SolRich-Dev.zip
+__pycache__/
+*.pyc
+upx.exe
+SolRichOLD.zip
+*.spec
+web-react-dist/
+*.apk
+.vscode/
+version_info.txt
+release_hook.py
+gen_version_info.py

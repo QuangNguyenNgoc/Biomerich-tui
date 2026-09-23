@@ -1,0 +1,1 @@
+import re; text = open('build.bat', 'r').read(); text = re.sub(r'--version-file=version_info\.txt \^\r?\n', '', text); text = re.sub(r'python gen_version_info\.py\r?\n(.*?)\r?\n', 'echo skipped gen_version_info\n', text); open('build_patched.bat', 'w').write(text)
