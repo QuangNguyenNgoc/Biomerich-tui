@@ -14,9 +14,7 @@ from . import discord_components as cv2
 from . import event_log
 
 FOOTER_TEXT = "SolRich"
-FOOTER_ICON = (
-    "https://raw.githubusercontent.com/Finnerich/Boterich-Images/main/solrich-logo.png"
-)
+FOOTER_ICON = "https://raw.githubusercontent.com/QuangNguyenNgoc/Biomerich-tui/main/assets/thumb_logo.gif"
 DISCORD_INVITE = "https://discord.gg/X7dbbQ5pXV"
 CREATOR_CREDIT = (
     "Macro made by [youtube.com/@Finnerich](https://www.youtube.com/@Finnerich)"
@@ -76,7 +74,7 @@ def _enqueue(fn, *args, **kwargs):
 
 
 def flush(timeout=10.0):
-    
+
     import time as _t
 
     deadline = _t.monotonic() + timeout
@@ -92,7 +90,7 @@ def flush(timeout=10.0):
 
 
 def _components_webhook_url(url):
-    
+
     if "/api/webhooks/" in url:
         url = url.replace("/api/webhooks/", "/api/v10/webhooks/")
     parts = urlsplit(url)
@@ -104,7 +102,7 @@ def _components_webhook_url(url):
 
 
 def _payload_for(message, content=""):
-    
+
     if message.get("flags") != IS_COMPONENTS_V2 or not message.get("components"):
         raise ValueError("Webhook messages must use Discord Components v2")
     payload = copy.deepcopy(message)
@@ -120,7 +118,7 @@ def _payload_for(message, content=""):
 
 
 def _post(url, message, content="", components=None):
-    
+
     if not url:
         return False
     _enqueue(_post_sync, url, message, content, components)
@@ -150,7 +148,7 @@ def _post_sync(url, message, content="", components=None):
 
 
 def _post_with_image(url, message, image_bytes, filename="screenshot.png", content=""):
-    
+
     if not url:
         return False
     _enqueue(_post_with_image_sync, url, message, image_bytes, filename, content)
@@ -160,7 +158,7 @@ def _post_with_image(url, message, image_bytes, filename="screenshot.png", conte
 def _post_with_image_sync(
     url, message, image_bytes, filename="screenshot.png", content=""
 ):
-    
+
     if not url:
         return False
     payload = _payload_for(message, content)
@@ -182,7 +180,7 @@ def _post_with_image_sync(
 
 
 def _post_with_images(url, message, images, content=""):
-    
+
     if not url or not images:
         return False
     _enqueue(_post_with_images_sync, url, message, images, content)
@@ -190,7 +188,7 @@ def _post_with_images(url, message, images, content=""):
 
 
 def _post_with_images_sync(url, message, images, content=""):
-    
+
     if not url or not images:
         return False
     payload = _payload_for(message, content)
@@ -215,15 +213,13 @@ def _container(color):
 
 
 def _add_author(container, account):
-    
+
     account = account or {}
     user_id = account.get("robloxUserId")
     username = account.get("robloxUsername") or account.get("name")
     if user_id and username:
         profile_url = f"https://www.roblox.com/users/{user_id}/profile"
-        container.text(
-            f"-# **[{username}]({profile_url})**  •  `{user_id}`"
-        )
+        container.text(f"-# **[{username}]({profile_url})**  •  `{user_id}`")
     else:
         container.text("-# **Account not found**")
     container.separator(divider=False, spacing=SPACING_SMALL)
@@ -239,7 +235,7 @@ def _add_header(container, content, thumbnail=None):
 
 
 def _add_footer(container, version, separator=True):
-    
+
     created_at = int(datetime.now(timezone.utc).timestamp())
     if separator:
         container.separator(divider=False, spacing=SPACING_SMALL)
@@ -248,7 +244,7 @@ def _add_footer(container, version, separator=True):
 
 
 def _add_support_footer(container, version):
-    
+
     container.separator(spacing=SPACING_SMALL)
     container.text(f"> ### **[Support Server]({DISCORD_INVITE})**")
     container.separator(spacing=SPACING_SMALL)
@@ -265,7 +261,7 @@ def _add_biome_event_layout(
     version,
     simulation_line="",
 ):
-    
+
     account = account or {}
     _add_author(container, account)
     _add_header(
@@ -277,8 +273,7 @@ def _add_biome_event_layout(
     )
     container.separator(spacing=SPACING_SMALL)
     container.text(
-        f"**Account**: {account.get('name', '?')}\n"
-        f"**Session Time:** {session_time}"
+        f"**Account**: {account.get('name', '?')}\n" f"**Session Time:** {session_time}"
     )
     private_server_link = account.get("link", "")
     if private_server_link:
@@ -388,7 +383,7 @@ def aura_found(
     session_time="00:00:00",
     ping_user_id="",
 ):
-    
+
     account = account or {}
     account_name = account.get("name", "?")
     rarity_text = f" - 1 in {int(rarity):,}" if rarity else ""
@@ -413,10 +408,12 @@ def aura_found(
     details = []
     if category:
         details.append(f"**Category:** {category}")
-    details.extend([
-        f"**Account:** {account_name}",
-        f"**Session Time:** {session_time}",
-    ])
+    details.extend(
+        [
+            f"**Account:** {account_name}",
+            f"**Session Time:** {session_time}",
+        ]
+    )
     container.text("\n".join(details))
     _add_support_footer(container, version)
     message = _message(container)
@@ -428,8 +425,6 @@ def aura_found(
     else:
         content = ""
 
-
-
     message["allowed_mentions"] = {
         "parse": [],
         "users": allowed_users,
@@ -439,10 +434,6 @@ def aura_found(
     event_log.maybe_log(message, account=account)
     for url in urls:
         _post(url, message, content=content)
-
-
-
-
 
 
 def biome_ended(
@@ -582,7 +573,7 @@ _TASK_TITLES = {
 
 
 def module_used(urls, task, account, success, session_time, version, detail=""):
-    
+
     title = _TASK_TITLES.get(task, task)
     if success:
         head = f"## {title} - Used"
@@ -611,7 +602,7 @@ def module_used(urls, task, account, success, session_time, version, detail=""):
 def merchant_detected(
     urls, account, merchant_name, mid, session_time, version, image_bytes=None
 ):
-    
+
     found = bool(merchant_name)
 
     if found:
@@ -667,7 +658,7 @@ def merchant_autobuy(
     session_time,
     version,
 ):
-    
+
     color = MERCHANT_COLORS.get((mid or "").lower(), COLOR_GREEN)
     container = _container(color)
     _add_author(container, account)
@@ -689,7 +680,7 @@ def merchant_autobuy(
 
 
 def autopop_used(urls, account, biome_key, used_items, session_time, version):
-    
+
     if used_items:
         item_lines = "\n".join(f"• **{nm}** ×{amt}" for nm, amt in used_items)
     else:
@@ -711,7 +702,7 @@ def autopop_used(urls, account, biome_key, used_items, session_time, version):
 
 
 def autopop_failsafe(urls, account, biome_key, missing_items, session_time, version):
-    
+
     if missing_items:
         miss_lines = "\n".join(f"• **{nm}**" for nm in missing_items)
     else:
@@ -733,7 +724,7 @@ def autopop_failsafe(urls, account, biome_key, missing_items, session_time, vers
 
 
 def failsafe_result(urls, label, account, success, session_time, version, detail=""):
-    
+
     if success:
         head = f"## {label} - Passed"
         color = COLOR_GREEN
