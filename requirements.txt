@@ -1,11 +1,9 @@
-# Runtime dependencies for running SolRich from source.
+# Runtime dependencies for SolRich_TUI.
 # Windows only. Everything Windows-specific goes through the standard library
 # ctypes, so there is no pywin32 here.
-fastapi
-uvicorn
-websockets
+textual>=3.0
+rich>=13.0
 requests
 pytesseract
 pillow
-pywebview
 keyboard

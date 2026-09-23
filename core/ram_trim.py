@@ -1,12 +1,12 @@
-
-
 import threading
 
-from core import bridge as eel
 from . import perf
 
 _MIN_MINUTES = 1
 _MAX_MINUTES = 24 * 60
+
+# Pluggable callback — set by the controller layer.
+_on_ram_trimmed = None
 
 
 class RamTrimmer:
@@ -29,7 +29,7 @@ class RamTrimmer:
         return minutes * 60
 
     def sync(self):
-        
+
         with self._lock:
             self._stop_locked()
             if self.enabled():
@@ -80,7 +80,7 @@ class RamTrimmer:
         notify_ram_trimmed(result.get("freedBytes", 0), result.get("count", 0))
 
     def trim_now(self) -> dict:
-        
+
         try:
             result = perf.trim_system_ram()
         except Exception as e:
@@ -91,8 +91,13 @@ class RamTrimmer:
 
 
 def notify_ram_trimmed(freed_bytes: int, count: int = 0):
-    
+    """Notify that RAM was trimmed. Uses pluggable callback instead of eel."""
+    freed = int(freed_bytes or 0)
+    cnt = int(count or 0)
+    mb = freed / (1024 * 1024) if freed else 0
+    print(f"[RamTrim] Trimmed {cnt} process(es), freed {mb:.1f} MB")
     try:
-        eel.js_on_ram_trimmed(int(freed_bytes or 0), int(count or 0))()
+        if _on_ram_trimmed:
+            _on_ram_trimmed(freed, cnt)
     except Exception as e:
-        print(f"[RamTrim] Notify failed: {e}")
+        print(f"[RamTrim] Notify callback failed: {e}")
