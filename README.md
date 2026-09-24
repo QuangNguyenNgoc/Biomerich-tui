@@ -1,59 +1,81 @@
-# SolRich
+# Biomerich TUI (SolRich Fork)
 
-A biome logger and automation tool for the Roblox game Sol's RNG. SolRich was previously called Biomerich.
+Một phiên bản tái cấu trúc (refactor) và chuyển đổi giao diện sang **TUI (Terminal User Interface)** từ dự án gốc SolRich (trước đây là Biomerich) — công cụ hỗ trợ ghi nhận biome, cảnh báo Discord webhook và tự động hóa cho Sol's RNG trên Roblox.
 
-SolRich reads your game in real time, keeps a full history of the biomes you roll, sends Discord alerts for the things you care about, and runs the repetitive parts of Sol's RNG for you across one account or many. It runs on Windows with a desktop interface.
+---
 
-## Features
+## 📌 Giới thiệu về Source Code (Fork)
 
-- Real time biome logging. Reads the Roblox log as you play and records every biome, with lifetime counts and a tier breakdown in the Stats tab.
-- Discord webhooks. Send biome, merchant, and fishing alerts to your own server, with screenshots. Each account can post to a different webhook.
-- Automation modules you turn on per account:
-  - Strange Controller and Biome Randomizer, which use inventory items on a timer to reroll or shuffle your biome.
-  - Merchant Detection, which teleports to a merchant, reads who arrived, and can buy for you.
-  - Auto Pop, which fires items the moment a chosen biome starts.
-  - Fishing, which casts, reels, and sells your catch on a walking route.
-- Eden mode, which parks one account at the Eden spawn and claims Eden the instant it appears.
-- Multiple accounts. Add as many as you want, each with its own modules and settings, and run them side by side.
-- Performance tab. Throttles the Roblox windows you are not looking at to keep your PC responsive, and gives the focused window full speed.
-- Safety tools. Anti-AFK to prevent disconnects, automatic RAM trimming, and failsafes that catch a missed action before it breaks a run.
-- Calibration presets. Match SolRich to your resolution once, then fine tune any point. A live overlay shows you where every click will land.
-- Quality of life. Start and stop hotkeys, a guided setup walkthrough, an updater built into the app, and a Patchlog tab that shows what changed in every version.
+Dự án này là một bản **fork** từ mã nguồn SolRich / Biomerich gốc với các định hướng thay đổi chính:
+- **Loại bỏ hoàn toàn Web GUI cồng kềnh**: Gỡ bỏ các thành phần UI dựa trên nền tảng web (Eel, WebView, NodeJS/React frontend) nhằm giảm thiểu triệt để dung lượng và các tiến trình chạy nền.
+- **Thay thế hoàn toàn bằng TUI (Terminal User Interface)**: Xây dựng giao diện dòng lệnh trực quan, tương tác phong phú dựa trên thư viện **Textual** và **Rich**.
+- **Tối ưu hóa tài nguyên**: Giảm hơn 30% mức tiêu thụ RAM và giảm tải CPU đáng kể, phù hợp cho việc vận hành liên tục (long-running) trên máy tính cá nhân.
+- **Tái cấu trúc luồng dữ liệu**: Cải thiện quản lý tài khoản, cấu hình linh hoạt và đồng bộ dữ liệu thời gian thực giữa Engine và giao diện hiển thị.
 
-## Getting started
+---
 
-Most people should download the latest `SolRich.exe` from the [Releases](../../releases) page and run it. No Python needed, and your settings live in your local app data folder.
+## 🚀 Hướng dẫn Cài đặt & Sử dụng (Terminal / CLI)
 
-The first time you open it, a short setup guide walks you through adding an account, matching your screen, and starting your first run.
+Ứng dụng chạy trực tiếp bằng Python thông qua giao diện Terminal (Command Prompt, PowerShell hoặc Windows Terminal) trên Windows.
 
-## Running from source
+### 1. Yêu cầu hệ thống
+- **Hệ điều hành**: Windows 10 / 11 (64-bit)
+- **Python**: Phiên bản **Python 3.10 trở lên** (khuyến nghị **Python 3.11** hoặc **Python 3.12**)
+- Quyền truy cập thông thường (không yêu cầu quyền Administrator).
 
-If you would rather run the code directly:
+### 2. Thiết lập môi trường ảo (Khuyến nghị)
+Mở cửa sổ dòng lệnh tại thư mục gốc của dự án:
 
-1. Install Python 3.11 or newer.
-2. Install the dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Build the interface (Node 20 or newer):
-   ```
-   cd frontend
-   npm install
-   npm run build
-   ```
-4. Start it from the project root:
-   ```
-   python main.py
-   ```
+```powershell
+# Tạo môi trường ảo
+python -m venv .venv
 
-## Text reading
+# Kích hoạt môi trường ảo trên Windows PowerShell:
+.venv\Scripts\Activate.ps1
 
-Merchant Detection, Auto Pop, and the fishing failsafes read text on your screen, which needs Tesseract. You do not have to install it yourself. If it is missing, a single button inside SolRich downloads and sets it up for you.
+# Hoặc kích hoạt trên Command Prompt (cmd):
+.venv\Scripts\activate.bat
+```
 
-## License
+### 3. Cài đặt các thư viện phụ thuộc (Dependencies)
+Cài đặt đầy đủ các gói thư viện cần thiết đã được tối giản trong file `requirements.txt`:
 
-SolRich is open source under the Apache License 2.0. See the [LICENSE](LICENSE) file for the full text, and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the components it builds on.
+```bash
+pip install -r requirements.txt
+```
 
-## Disclaimer
+> **Ghi chú về nhận diện chữ (OCR):** Một số tính năng như nhận diện Merchant, Auto Pop cần Tesseract OCR để đọc văn bản trên màn hình. Nếu hệ thống chưa cài đặt Tesseract, ứng dụng sẽ tự động tải và cấu hình khi chạy.
 
-SolRich is a fan made tool for Sol's RNG. It is not affiliated with the game or its developers. Use it at your own risk.
+### 4. Khởi chạy ứng dụng
+Sau khi hoàn tất cài đặt môi trường, khởi chạy ứng dụng TUI bằng lệnh:
+
+```bash
+python main_tui.py
+```
+
+---
+
+## 🖥️ Các tính năng trên Giao diện TUI
+
+Giao diện Terminal được bố cục thành các tab chức năng trực quan:
+- **Dashboard**: Xem nhanh trạng thái Macro Engine, danh sách tài khoản đang hoạt động và Biome thời gian thực.
+- **Accounts**: Quản lý tài khoản Roblox, trạng thái đăng nhập, liên kết VIP Server và thiết lập các module tương ứng.
+- **Settings**: Cấu hình các thiết lập vận hành, ngưỡng thời gian và phím tắt (Hotkeys) tự động áp dụng ngay khi lưu.
+- **Automation / Modules**: Hỗ trợ các tác vụ tự động như Auto Pop, Fishing, Merchant, Eden mode,...
+- **Performance**: Điều tiết hiệu năng cửa sổ Roblox nền, tối ưu hóa mức chiếm dụng RAM và CPU.
+- **Logs & Timeline**: Bảng theo dõi Activity Log, Event Log và Timeline thời gian hoạt động của từng tài khoản.
+- **Webhooks**: Cấu hình các kênh Discord Webhook nhận thông báo theo định dạng Discord Components v2 hiện đại.
+
+---
+
+## 📜 Bản quyền & Thông tin bổ sung (License & Disclaimer)
+
+### 1. Bản quyền mã nguồn (Source Code License)
+Mã nguồn của dự án được phân phối theo giấy phép mã nguồn mở **[MIT License](LICENSE)**. Bạn được tự do sử dụng, chỉnh sửa, đóng góp và phát triển thêm theo các điều khoản của giấy phép này.
+
+### 2. Tuyên bố về tài nguyên hình ảnh (Assets & Media)
+- Toàn bộ các hình ảnh, biểu tượng (icons), ảnh động (GIFs) và ảnh thu nhỏ (thumbnails) sử dụng trong dự án (dùng cho webhook push, logo, hiển thị ảnh biome...) hiện tại được **sưu tầm và lấy ngẫu nhiên từ internet** nhằm phục vụ việc nghiên cứu, phát triển và thử nghiệm nội bộ.
+- Tác giả sẽ liên tục rà soát để **bổ sung thông tin nguồn gốc / ghi công (credits & attribution)** cụ thể, hoặc **thay thế hoàn toàn bằng các tài nguyên hình ảnh do cá nhân tự thiết kế và sản xuất** trong các phiên bản cập nhật tiếp theo.
+
+### 3. Tuyên bố từ chối trách nhiệm (Disclaimer)
+Dự án là sản phẩm mã nguồn mở phi thương mại do cộng đồng người chơi phát triển, không liên kết, không được chứng thực hoặc ủy quyền bởi Roblox Corporation hay nhà phát triển game Sol's RNG. Người dùng tự chịu trách nhiệm đối với tài khoản và hành vi sử dụng của mình.
