@@ -175,9 +175,18 @@ class AddWebhookDialog(Screen):
                 placeholder="https://discord.com/api/webhooks/...",
                 id="input-wh-url",
             )
+            yield Label("Linked Accounts:")
+            yield SelectionList(id="sel-accounts")
             with Horizontal():
                 yield Button("Add", variant="success", id="btn-wh-confirm")
                 yield Button("Cancel", variant="error", id="btn-wh-cancel")
+
+    def on_mount(self) -> None:
+        sel = self.query_one("#sel-accounts", SelectionList)
+        ctrl = self.app.controller
+        if ctrl:
+            for acc in ctrl.config.accounts:
+                sel.add_option((acc["name"], acc["id"], False))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-wh-cancel":
@@ -191,9 +200,15 @@ class AddWebhookDialog(Screen):
                 self.notify("URL is required", severity="error")
                 return
 
+            sel = self.query_one("#sel-accounts", SelectionList)
+            routed = sel.selected
+
             ctrl = self.app.controller
             if ctrl:
-                ctrl.add_webhook(name=name or "Webhook", url=url)
+                wh = ctrl.add_webhook(name=name or "Webhook", url=url)
+                if wh and routed:
+                    wh["routedAccounts"] = routed
+                    ctrl.config.save()
                 self.notify(f"Webhook '{name}' added!")
             self.dismiss(True)
 class EditWebhookDialog(Screen):
@@ -222,11 +237,16 @@ class EditWebhookDialog(Screen):
         if ctrl:
             state = ctrl.get_state()
             webhooks = state.get("webhooks", [])
-            for wh in webhooks:
-                if wh.get("id") == self.wh_id:
-                    self.query_one("#input-wh-name", Input).value = wh.get("name", "")
-                    self.query_one("#input-wh-url", Input).value = wh.get("url", "")
-                    break
+            target_wh = next((w for w in webhooks if w.get("id") == self.wh_id), None)
+            if target_wh:
+                self.query_one("#input-wh-name", Input).value = target_wh.get("name", "")
+                self.query_one("#input-wh-url", Input).value = target_wh.get("url", "")
+                
+                sel = self.query_one("#sel-accounts", SelectionList)
+                routed = target_wh.get("routedAccounts", [])
+                for acc in state.get("accounts", []):
+                    is_selected = acc.get("id") in routed
+                    sel.add_option((acc.get("name", ""), acc.get("id"), is_selected))
 
     def compose(self) -> ComposeResult:
         with Vertical(id="dialog-container"):
@@ -238,6 +258,8 @@ class EditWebhookDialog(Screen):
                 placeholder="https://discord.com/api/webhooks/...",
                 id="input-wh-url",
             )
+            yield Label("Linked Accounts:")
+            yield SelectionList(id="sel-accounts")
             with Horizontal():
                 yield Button("Save", variant="warning", id="btn-save")
                 yield Button("Cancel", variant="error", id="btn-cancel")
@@ -254,12 +276,16 @@ class EditWebhookDialog(Screen):
                 self.notify("URL is required", severity="error")
                 return
 
+            sel = self.query_one("#sel-accounts", SelectionList)
+            routed = sel.selected
+
             ctrl = self.app.controller
             if ctrl:
                 for wh in ctrl.config.webhooks:
                     if wh.get("id") == self.wh_id:
                         wh["name"] = name
                         wh["url"] = url
+                        wh["routedAccounts"] = routed
                         ctrl.config.save()
                         break
                 

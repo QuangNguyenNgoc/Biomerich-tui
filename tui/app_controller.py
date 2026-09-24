@@ -215,15 +215,55 @@ class AppController:
 
     # ── Account Management ────────────────────────────────────────
 
-    def add_account(self, name: str, token: Optional[str] = None) -> dict:
+    def add_account(self, name: str, link: str = "", token: Optional[str] = None) -> dict:
         try:
-            result = self.config.add_account(name)
-            if result.get("ok") and token:
-                acc_id = result.get("id")
-                if acc_id:
-                    self.config.set_account_token(acc_id, token)
+            avatar = ""
+            roblox_user_id = None
+            roblox_username = ""
+            try:
+                from core.macro_engine import MacroEngine
+                profile = MacroEngine.get_roblox_profile(name)
+                avatar = profile.get("avatar", "")
+                roblox_user_id = profile.get("id")
+                roblox_username = profile.get("name", "")
+            except Exception:
+                pass
+            acc = self.config.add_account(
+                name=name,
+                link=link or "",
+                avatar=avatar,
+                roblox_user_id=roblox_user_id,
+                roblox_username=roblox_username,
+            )
+            acc_id = acc.get("id")
+            if token and acc_id:
+                self.config.set_account_token(acc_id, token)
             self.config.save()
-            return result
+            return {"ok": True, "id": acc_id, "account": acc}
+        except ValueError as ve:
+            return {"ok": False, "error": str(ve)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def update_account(
+        self,
+        acc_id: str,
+        name: Optional[str] = None,
+        link: Optional[str] = None,
+        token: Optional[str] = None,
+    ) -> dict:
+        try:
+            for acc in self.config.accounts:
+                if acc.get("id") == acc_id:
+                    if name is not None:
+                        acc["name"] = name
+                    if link is not None:
+                        acc["link"] = link
+                    if token:
+                        self.config.set_account_token(acc_id, token)
+                    self.config.save()
+                    return {"ok": True}
+            return {"ok": False, "error": "Account not found"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
 

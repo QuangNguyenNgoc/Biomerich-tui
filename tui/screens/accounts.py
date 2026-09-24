@@ -196,19 +196,8 @@ class AddAccountDialog(Screen):
 
             ctrl = self.app.controller
             if ctrl:
-                result = ctrl.add_account(name, token=token if token else None)
+                result = ctrl.add_account(name, link=link, token=token if token else None)
                 if result.get("ok"):
-                    # Save VIP link if provided
-                    if link:
-                        acc_id = result.get("id")
-                        if acc_id:
-                            # Update config with link
-                            state = ctrl.get_state()
-                            for acc in ctrl.config.accounts:
-                                if acc.get("id") == acc_id:
-                                    acc["link"] = link
-                            ctrl.config.save()
-                            
                     self.notify(f"Account '{name}' added!")
                     self.dismiss(True)
                 else:
@@ -284,15 +273,18 @@ class EditAccountDialog(Screen):
 
             ctrl = self.app.controller
             if ctrl:
-                for acc in ctrl.config.accounts:
-                    if acc.get("id") == self.acc_id:
-                        acc["name"] = name
-                        acc["link"] = link
-                        if token:
-                            ctrl.config.tokens.set(self.acc_id, token)
-                        ctrl.config.save()
-                        break
-                
-                self.notify(f"Account '{name}' updated!")
-                self.dismiss(True)
+                result = ctrl.update_account(
+                    self.acc_id,
+                    name=name,
+                    link=link,
+                    token=token if token else None,
+                )
+                if result.get("ok"):
+                    self.notify(f"Account '{name}' updated!")
+                    self.dismiss(True)
+                else:
+                    self.notify(
+                        f"Failed: {result.get('error', 'Unknown')}",
+                        severity="error",
+                    )
 
