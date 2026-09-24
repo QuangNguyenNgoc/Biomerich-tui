@@ -3,7 +3,15 @@
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.containers import VerticalScroll
-from textual.widgets import Static, Button, Input, Label, Switch, DataTable, SelectionList
+from textual.widgets import (
+    Static,
+    Button,
+    Input,
+    Label,
+    Switch,
+    DataTable,
+    SelectionList,
+)
 from textual.containers import Vertical, Horizontal
 
 from rich.panel import Panel
@@ -94,7 +102,9 @@ class WebhooksScreen(VerticalScroll):
             if table.cursor_row is not None:
                 row_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key
                 wh_id = row_key.value
-                self.app.push_screen(EditWebhookDialog(wh_id=wh_id), self._on_dialog_closed)
+                self.app.push_screen(
+                    EditWebhookDialog(wh_id=wh_id), self._on_dialog_closed
+                )
         elif event.button.id == "btn-delete-wh":
             table = self.query_one(DataTable)
             if table.cursor_row is not None:
@@ -211,9 +221,11 @@ class AddWebhookDialog(Screen):
                     ctrl.config.save()
                 self.notify(f"Webhook '{name}' added!")
             self.dismiss(True)
+
+
 class EditWebhookDialog(Screen):
     """Modal dialog to edit an existing webhook."""
-    
+
     DEFAULT_CSS = """
     EditWebhookDialog {
         align: center middle;
@@ -227,7 +239,7 @@ class EditWebhookDialog(Screen):
         background: $surface;
     }
     """
-    
+
     def __init__(self, wh_id: str, **kwargs):
         super().__init__(**kwargs)
         self.wh_id = wh_id
@@ -239,9 +251,11 @@ class EditWebhookDialog(Screen):
             webhooks = state.get("webhooks", [])
             target_wh = next((w for w in webhooks if w.get("id") == self.wh_id), None)
             if target_wh:
-                self.query_one("#input-wh-name", Input).value = target_wh.get("name", "")
+                self.query_one("#input-wh-name", Input).value = target_wh.get(
+                    "name", ""
+                )
                 self.query_one("#input-wh-url", Input).value = target_wh.get("url", "")
-                
+
                 sel = self.query_one("#sel-accounts", SelectionList)
                 routed = target_wh.get("routedAccounts", [])
                 for acc in state.get("accounts", []):
@@ -288,7 +302,6 @@ class EditWebhookDialog(Screen):
                         wh["routedAccounts"] = routed
                         ctrl.config.save()
                         break
-                
+
                 self.notify(f"Webhook '{name}' updated!")
                 self.dismiss(True)
-
