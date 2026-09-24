@@ -3,7 +3,7 @@
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.containers import VerticalScroll
-from textual.widgets import Static, Button, Input, Label, Switch, DataTable
+from textual.widgets import Static, Button, Input, Label, Switch, DataTable, SelectionList
 from textual.containers import Vertical, Horizontal
 
 from rich.panel import Panel
