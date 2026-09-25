@@ -215,17 +215,131 @@ class AppController:
 
     # ── Account Management ────────────────────────────────────────
 
-    def add_account(self, name: str, token: Optional[str] = None) -> dict:
+    def add_account(self, name: str, link: str = "", token: str = None) -> dict:
         try:
-            result = self.config.add_account(name)
-            if result.get("ok") and token:
-                acc_id = result.get("id")
-                if acc_id:
-                    self.config.set_account_token(acc_id, token)
+            avatar = ""
+            roblox_user_id = None
+            roblox_username = ""
+            try:
+                from core.macro_engine import MacroEngine
+
+                profile = MacroEngine.get_roblox_profile(name)
+                avatar = profile.get("avatar", "")
+                roblox_user_id = profile.get("id")
+                roblox_username = profile.get("name", "")
+            except Exception:
+                pass
+            acc = self.config.add_account(
+                name=name,
+                link=link or "",
+                avatar=avatar,
+                roblox_user_id=roblox_user_id,
+                roblox_username=roblox_username,
+            )
+            acc_id = acc.get("id")
+            if token and acc_id:
+                self.config.set_account_token(acc_id, token)
             self.config.save()
-            return result
+            return {"ok": True, "id": acc_id, "account": acc}
+        except ValueError as ve:
+            return {"ok": False, "error": str(ve)}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    def update_account(
+        self,
+        acc_id: str,
+        name: str = None,
+        link: str = None,
+        token: str = None,
+        modules: dict = None,
+    ) -> dict:
+        try:
+            for acc in self.config.accounts:
+                if acc.get("id") == acc_id:
+                    if name is not None:
+                        acc["name"] = name
+                    if link is not None:
+                        acc["link"] = link
+                    if modules:
+                        for k, v in modules.items():
+                            acc[k] = v
+                    if token:
+                        self.config.set_account_token(acc_id, token)
+                    self.config.save()
+                    return {"ok": True}
+            return {"ok": False, "error": "Account not found"}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def move_account(self, acc_id: str, direction: str) -> dict:
+        try:
+            self.config.move_account(acc_id, direction)
+            self.config.save()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def toggle_account_enabled(self, acc_id: str) -> dict:
+        try:
+            account = next(
+                (a for a in self.config.accounts if a.get("id") == acc_id), None
+            )
+            if account:
+                new_state = not account.get("enabled", True)
+                self.config.set_account_enabled(acc_id, new_state)
+                self.config.save()
+                return {"ok": True, "enabled": new_state}
+            return {"ok": False}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def toggle_webhook_active(self, wh_id: str) -> dict:
+        try:
+            wh = next((w for w in self.config.webhooks if w.get("id") == wh_id), None)
+            if wh:
+                new_state = not wh.get("active", True)
+                self.config.set_webhook_active(wh_id, new_state)
+                self.config.save()
+                return {"ok": True, "active": new_state}
+            return {"ok": False}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def test_webhook(self, wh_id: str) -> dict:
+        try:
+            from core import webhooks
+
+            wh = next((w for w in self.config.webhooks if w.get("id") == wh_id), None)
+            if wh:
+                webhooks.macro_started(
+                    urls=[wh.get("url")], account_names=["Test Account"], version="Test"
+                )
+                return {"ok": True}
+            return {"ok": False}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def clear_roblox_logs(self) -> dict:
+        try:
+            from core import roblox_cleanup
+
+            roblox_cleanup.clear_logs()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def factory_reset(self) -> dict:
+        try:
+            self.config.reset_to_defaults()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def open_url(self, url: str) -> None:
+        import webbrowser
+
+        webbrowser.open(url)
 
     def delete_account(self, acc_id: str) -> dict:
         try:

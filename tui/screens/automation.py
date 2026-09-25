@@ -1,3 +1,4 @@
+import pyperclip
 """Automation screen — calibration, fishing, merchant, autopop, eden config."""
 
 from textual.app import ComposeResult

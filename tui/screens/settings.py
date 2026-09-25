@@ -47,6 +47,7 @@ class SettingsScreen(VerticalScroll):
     """Grouped settings view with toggles and inputs."""
 
     DEFAULT_CSS = """
+    #settings-actions { height: auto; margin: 1; }
     SettingsScreen {
         padding: 1;
         overflow-y: auto;
@@ -94,9 +95,10 @@ class SettingsScreen(VerticalScroll):
                                 id=f"sel-{key}",
                             )
 
-        with Horizontal():
-            yield Button("Save", variant="success", id="btn-save")
-            yield Button("Reset", variant="warning", id="btn-reset")
+        with Horizontal(id="settings-actions"):
+            yield Button(label="Clear Roblox Logs", variant="default", id="btn-clear-logs")
+            yield Button(label="Factory Reset", variant="error", id="btn-reset")
+            yield Button(label="Save", variant="success", id="btn-save")
 
     def on_mount(self) -> None:
         self._load_settings()
@@ -122,11 +124,25 @@ class SettingsScreen(VerticalScroll):
                     pass
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        ctrl = self.app.controller
         if event.button.id == "btn-save":
             self._save_settings()
+        elif event.button.id == "btn-clear-logs":
+            if ctrl:
+                result = ctrl.clear_roblox_logs()
+                if result.get("ok"):
+                    self.notify("Roblox logs cleared!")
+                else:
+                    self.notify(f"Failed: {result.get('error')}", severity="error")
         elif event.button.id == "btn-reset":
-            self._load_settings()
-            self.notify("Settings reset to saved values")
+            if ctrl:
+                result = ctrl.factory_reset()
+                if result.get("ok"):
+                    self.notify("Factory Reset complete! Please restart app.")
+                else:
+                    self.notify(
+                        f"Reset failed: {result.get('error')}", severity="error"
+                    )
 
     def _save_settings(self) -> None:
         """Collect widget values and push to controller."""

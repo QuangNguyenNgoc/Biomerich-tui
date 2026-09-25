@@ -44,8 +44,12 @@ class WebhooksScreen(VerticalScroll):
 
         with Horizontal(classes="action-row"):
             yield Button("Add Webhook", variant="success", id="btn-add-wh")
-            yield Button("Test Send", variant="primary", id="btn-test-wh")
+            yield Button(
+                "Test Send", variant="primary", id="btn-test-wh", disabled=True
+            )
+            yield Button("Toggle Status", id="btn-toggle-wh", disabled=True)
             yield Button("Refresh", variant="default", id="btn-refresh-wh")
+        with Horizontal(classes="action-row"):
             yield Button(
                 "Edit Selected", variant="warning", id="btn-edit-wh", disabled=True
             )
@@ -75,7 +79,7 @@ class WebhooksScreen(VerticalScroll):
             display_url = url
             if len(display_url) > 40:
                 display_url = display_url[:30] + "..." + display_url[-10:]
-            enabled = "✅" if wh.get("enabled", True) else "❌"
+            enabled = "✅" if wh.get("active", True) else "❌"
             table.add_row(
                 str(i),
                 wh.get("name", f"Webhook {i}"),
@@ -94,7 +98,32 @@ class WebhooksScreen(VerticalScroll):
         if event.button.id == "btn-add-wh":
             self.app.push_screen(AddWebhookDialog(), self._on_dialog_closed)
         elif event.button.id == "btn-test-wh":
-            self.notify("Test webhook sent!")
+            table = self.query_one(DataTable)
+            if table.cursor_row is not None:
+                wh_id = table.coordinate_to_cell_key(
+                    table.cursor_coordinate
+                ).row_key.value
+                res = ctrl.test_webhook(wh_id)
+                if res.get("ok"):
+                    self.notify("Test webhook sent!")
+                else:
+                    self.notify(
+                        f"Test failed: {res.get('error', 'Unknown')}", severity="error"
+                    )
+        elif event.button.id == "btn-toggle-wh":
+            table = self.query_one(DataTable)
+            if table.cursor_row is not None:
+                wh_id = table.coordinate_to_cell_key(
+                    table.cursor_coordinate
+                ).row_key.value
+                res = ctrl.toggle_webhook_active(wh_id)
+                if res.get("ok"):
+                    self._refresh_list()
+                else:
+                    self.notify(
+                        f"Toggle failed: {res.get('error', 'Unknown')}",
+                        severity="error",
+                    )
         elif event.button.id == "btn-refresh-wh":
             self._refresh_list()
         elif event.button.id == "btn-edit-wh":
@@ -152,6 +181,8 @@ class WebhooksScreen(VerticalScroll):
         has_selection = table.cursor_row is not None and table.row_count > 0
         self.query_one("#btn-delete-wh", Button).disabled = not has_selection
         self.query_one("#btn-edit-wh", Button).disabled = not has_selection
+        self.query_one("#btn-test-wh", Button).disabled = not has_selection
+        self.query_one("#btn-toggle-wh", Button).disabled = not has_selection
 
     def _on_dialog_closed(self, result) -> None:
         if result:
