@@ -126,19 +126,27 @@ class LogsScreen(VerticalScroll):
                     eid = entry.get("id", 0)
                     if eid > self._last_aura_id:
                         self._last_aura_id = eid
-                    ts = entry.get("timestamp", "")
-                    acc = entry.get("account", "Unknown")
-                    biome = entry.get("biome", "?")
-                    found = entry.get("found", [])
-                    found_str = ", ".join(found) if found else "None"
+
+                    ts_val = entry.get("ts", 0)
+                    from datetime import datetime
+                    if isinstance(ts_val, (int, float)) and ts_val > 0:
+                        ts = datetime.fromtimestamp(ts_val).strftime("%H:%M:%S")
+                    else:
+                        ts = ""
+
+                    acc = entry.get("account", "?")
+                    aura = entry.get("aura", "?")
+                    rarity = entry.get("rarity", "")
+                    color = entry.get("color", "")
+                    style = "bold yellow"
 
                     text = Text()
                     text.append(f"[{ts}] ", style="bright_black")
                     text.append(f"[{acc}] ", style="cyan")
-                    text.append("Biome: ", style="white")
-                    text.append(f"{biome} ", style="bold magenta")
-                    text.append("Aura: ", style="white")
-                    text.append(f"{found_str}", style="bold yellow")
+                    text.append("Found: ", style="white")
+                    text.append(f"{aura}", style=style)
+                    if rarity:
+                        text.append(f" ({rarity})", style="dim")
                     aura_log.write(text)
         except Exception:
             pass

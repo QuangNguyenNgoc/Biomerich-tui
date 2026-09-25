@@ -77,17 +77,15 @@ class AccountsScreen(VerticalScroll):
         if ctrl is None:
             return
 
-        state = ctrl.get_state()
-        accounts = state.get("accounts", [])
         accounts = ctrl.get_live_accounts()
 
         table = self.query_one(DataTable)
-        table.clear()
 
+        # Build row data
+        row_data = []
         for i, acc in enumerate(accounts, 1):
             enabled = "✅" if acc.get("enabled", True) else "❌"
             has_token = "🔑 Set" if acc.get("hasToken") else "⚠️ Missing"
-            hwnd = "Bound" if acc.get("hwnd") else "Unbound"
             hwnd = "Bound" if acc.get("hwndKnown") else "Unbound"
             modules = []
             if acc.get("fishingEnabled"):
@@ -103,7 +101,7 @@ class AccountsScreen(VerticalScroll):
             if len(display_link) > 30:
                 display_link = display_link[:20] + "..." + display_link[-5:]
 
-            table.add_row(
+            row_data.append((
                 str(i),
                 acc.get("name", "?"),
                 enabled,
@@ -111,8 +109,29 @@ class AccountsScreen(VerticalScroll):
                 hwnd,
                 mod_str,
                 display_link,
-                key=acc.get("id", ""),
-            )
+                acc.get("id", ""),  # key for row identity
+            ))
+
+        # Compare row count to decide strategy
+        if table.row_count != len(row_data):
+            # Structural change: full rebuild
+            table.clear()
+            for row in row_data:
+                *cells, key = row
+                table.add_row(*cells, key=key)
+        else:
+            # Same count: use update_cell() to avoid GC pressure
+            row_keys = list(table.rows.keys())
+            col_keys = list(table.columns.keys())
+            for r_idx, row in enumerate(row_data):
+                *cells, _key = row
+                for c_idx, value in enumerate(cells):
+                    table.update_cell(
+                        row_keys[r_idx],
+                        col_keys[c_idx],
+                        value,
+                        update_width=False,
+                    )
 
         self._update_button_states()
 

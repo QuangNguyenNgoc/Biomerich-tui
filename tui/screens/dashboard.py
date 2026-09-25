@@ -1,14 +1,11 @@
 """Dashboard screen - main overview with engine status, biome, accounts."""
 
 from textual.app import ComposeResult
-from textual.screen import Screen
 from textual.containers import VerticalScroll
-from textual.widgets import Header, Static, Button, Label
-from textual.containers import Vertical, Horizontal, Container
+from textual.widgets import Static, Button, DataTable
+from textual.containers import Vertical
 
-from rich.table import Table
 from rich.panel import Panel
-from rich.text import Text
 
 
 class DashboardScreen(VerticalScroll):
@@ -20,23 +17,46 @@ class DashboardScreen(VerticalScroll):
 
     DEFAULT_CSS = """
     DashboardScreen {
-        layout: grid;
-        grid-size: 1 3;
-        grid-gutter: 1;
         padding: 1;
     }
 
-    #accounts-panel { row-span: 1; column-span: 1; height: auto; border: solid $accent; padding: 1; }
-    #stats-panel { row-span: 1; column-span: 1; height: auto; border: solid $warning; padding: 1; }
-    #activity-panel { row-span: 1; column-span: 1; height: 1fr; border: solid $success; padding: 1; }
+    #dash-accounts-table {
+        height: auto;
+        max-height: 14;
+        border: solid $accent;
+        margin-bottom: 1;
+    }
+
+    #stats-panel {
+        height: auto;
+        border: solid $warning;
+        padding: 1;
+        margin-bottom: 1;
+    }
+
+    #activity-panel {
+        height: 1fr;
+        min-height: 5;
+        border: solid $success;
+        padding: 1;
+    }
     """
 
     def compose(self) -> ComposeResult:
-        yield Static(id="accounts-panel")
+        yield DataTable(id="dash-accounts-table", cursor_type="none")
         yield Static(id="stats-panel")
         yield Static(id="activity-panel")
 
     def on_mount(self) -> None:
+        # Initialize the DataTable columns once
+        table = self.query_one("#dash-accounts-table", DataTable)
+        table.add_columns("#", "Name", "Status", "Biome", "Window")
+
+        # Cache state to avoid redundant re-renders
+        self._prev_accounts_hash = None
+        self._prev_stats_text = None
+        self._prev_activity_text = None
+
         self._refresh_panels()
         self.set_interval(1.0, self._refresh_panels)
 
@@ -45,45 +65,71 @@ class DashboardScreen(VerticalScroll):
         if ctrl is None:
             return
 
-        # 1. Accounts panel (Top priority)
-        accounts_panel = self.query_one("#accounts-panel", Static)
-        accounts_live = ctrl.get_live_accounts()
-        table = Table(title="Accounts", expand=True, show_lines=False)
-        table.add_column("#", style="dim", width=3)
-        table.add_column("Name", style="cyan")
-        table.add_column("Status", style="green")
-        table.add_column("Biome", style="magenta")
-        table.add_column("Window", style="yellow")
+        # --- 1. Accounts Table (DataTable with update_cell) ---
+        self._refresh_accounts_table(ctrl)
 
+        # --- 2. Stats Panel (only update when text changes) ---
+        self._refresh_stats_panel(ctrl)
+
+        # --- 3. Activity Panel (only update when text changes) ---
+        self._refresh_activity_panel(ctrl)
+
+    def _refresh_accounts_table(self, ctrl) -> None:
+        accounts_live = ctrl.get_live_accounts()
+        table = self.query_one("#dash-accounts-table", DataTable)
+
+        # Build a hash of current data to check if anything changed
+        row_data = []
         for i, acc in enumerate(accounts_live, 1):
             status = "Online" if acc.get("online") else "Offline"
-            status_style = "green" if acc.get("online") else "red"
             biome = acc.get("currentBiome") or "-"
             hwnd = "Bound" if acc.get("hwndKnown") else "Unbound"
-            table.add_row(
+            row_data.append((
                 str(i),
                 acc.get("name", "?"),
-                f"[{status_style}]{status}[/{status_style}]",
+                status,
                 biome,
                 hwnd,
-            )
+            ))
 
-        accounts_panel.update(Panel(table, border_style="blue"))
+        # Quick hash: convert to tuple for comparison
+        data_hash = tuple(row_data)
+        if data_hash == self._prev_accounts_hash:
+            return  # Nothing changed, skip re-render entirely
+        self._prev_accounts_hash = data_hash
 
-        # 2. Stats panel (Time Tracking & Eden/Biome)
+        # Check if row count changed (structural change → must rebuild)
+        if table.row_count != len(row_data):
+            table.clear()
+            for row in row_data:
+                table.add_row(*row)
+        else:
+            # Same row count → use update_cell for each cell
+            row_keys = list(table.rows.keys())
+            col_keys = list(table.columns.keys())
+            for r_idx, row in enumerate(row_data):
+                for c_idx, value in enumerate(row):
+                    table.update_cell(
+                        row_keys[r_idx],
+                        col_keys[c_idx],
+                        value,
+                        update_width=False,
+                    )
+
+    def _refresh_stats_panel(self, ctrl) -> None:
         stats_panel = self.query_one("#stats-panel", Static)
         try:
             engine = ctrl.engine
             if engine and hasattr(engine, "time"):
                 stats = engine.time.live()
 
-                # Format session
+                # Session uptime
                 session_secs = engine.uptime if hasattr(engine, "uptime") else 0
                 m, s = divmod(int(session_secs), 60)
                 h, m = divmod(m, 60)
                 session = f"{h:02d}:{m:02d}:{s:02d}"
 
-                # Format total
+                # Total uptime
                 total_secs = stats.get("totalEngine", 0)
                 m, s = divmod(int(total_secs), 60)
                 h, m = divmod(m, 60)
@@ -94,32 +140,19 @@ class DashboardScreen(VerticalScroll):
                     is_on = engine.anti_afk.enabled()
                     afk_txt = f"Anti-AFK: [cyan]{'On' if is_on else 'Off'}[/cyan]"
 
-                stats_text = f"Session Uptime: [bold]{session}[/bold]\nTotal Uptime: [bold]{total}[/bold]\n{afk_txt}"
-                stats_panel.update(
-                    Panel(
-                        stats_text,
-                        title="[bold]Stats & Tracking[/bold]",
-                        border_style="yellow",
-                    )
-                )
+                new_text = f"Session Uptime: [bold]{session}[/bold]\nTotal Uptime: [bold]{total}[/bold]\n{afk_txt}"
             else:
-                stats_panel.update(
-                    Panel(
-                        "Waiting for Engine...",
-                        title="[bold]Stats & Tracking[/bold]",
-                        border_style="yellow",
-                    )
-                )
+                new_text = "Waiting for Engine..."
         except Exception as e:
+            new_text = f"Error: {e}"
+
+        if new_text != self._prev_stats_text:
+            self._prev_stats_text = new_text
             stats_panel.update(
-                Panel(
-                    f"Error: {e}",
-                    title="[bold]Stats & Tracking[/bold]",
-                    border_style="yellow",
-                )
+                Panel(new_text, title="[bold]Stats & Tracking[/bold]", border_style="yellow")
             )
 
-        # 3. Activity Panel (mini view)
+    def _refresh_activity_panel(self, ctrl) -> None:
         activity_panel = self.query_one("#activity-panel", Static)
         try:
             from core import activity_log
@@ -127,13 +160,7 @@ class DashboardScreen(VerticalScroll):
             res = activity_log.since(max(0, activity_log._seq - 10))
             entries = res.get("entries", [])
             if not entries:
-                activity_panel.update(
-                    Panel(
-                        "[dim]No recent activity[/dim]",
-                        title="Activity Log",
-                        border_style="green",
-                    )
-                )
+                new_text = "[dim]No recent activity[/dim]"
             else:
                 lines = []
                 for e in entries[-5:]:
@@ -141,14 +168,14 @@ class DashboardScreen(VerticalScroll):
                     cat = e.get("category") or e.get("kind", "?")
                     txt = str(e.get("text", ""))[:40]
                     lines.append(f"[[dim]{ts}[/dim]] [[cyan]{cat}[/cyan]] {txt}")
-                activity_panel.update(
-                    Panel(
-                        "\n".join(lines), title="Recent Activity", border_style="green"
-                    )
-                )
+                new_text = "\n".join(lines)
         except Exception as e:
+            new_text = f"Error: {e}"
+
+        if new_text != self._prev_activity_text:
+            self._prev_activity_text = new_text
             activity_panel.update(
-                Panel(f"Error: {e}", title="Activity Log", border_style="red")
+                Panel(new_text, title="Recent Activity", border_style="green")
             )
 
     def action_toggle_engine(self) -> None:
@@ -156,7 +183,7 @@ class DashboardScreen(VerticalScroll):
         if ctrl is None:
             return
         if ctrl.is_engine_running():
-            result = ctrl.stop_engine()
+            ctrl.stop_engine()
             self.notify("Macro stopped", severity="warning")
         else:
             result = ctrl.start_engine()
@@ -165,4 +192,7 @@ class DashboardScreen(VerticalScroll):
             else:
                 errors = result.get("errors", ["Unknown error"])
                 self.notify(f"Failed: {errors[0]}", severity="error")
+        # Force immediate refresh after toggle
+        self._prev_accounts_hash = None
+        self._prev_stats_text = None
         self._refresh_panels()
