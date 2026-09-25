@@ -39,10 +39,19 @@ class LogsScreen(VerticalScroll):
                 )
             with TabPane("Timeline", id="tab-timeline"):
                 yield Static(id="timeline-view")
+            with TabPane("Aura Log", id="tab-aura"):
+                yield RichLog(
+                    highlight=True,
+                    markup=True,
+                    wrap=True,
+                    max_lines=300,
+                    id="aura-log",
+                )
 
     def on_mount(self) -> None:
         self._last_activity_id = 0
         self._last_event_id = 0
+        self._last_aura_id = 0
         self.set_interval(1.0, self._poll_logs)
 
     def _poll_logs(self) -> None:
@@ -109,6 +118,33 @@ class LogsScreen(VerticalScroll):
 
                 event_log.write(ev_line)
         except Exception:
+            pass
+
+
+        # Aura log
+        try:
+            aura_entries = ctrl.get_aura_log(self._last_aura_id)
+            if aura_entries:
+                aura_log = self.query_one("#aura-log", RichLog)
+                for entry in aura_entries:
+                    eid = entry.get("id", 0)
+                    if eid > self._last_aura_id:
+                        self._last_aura_id = eid
+                    ts = entry.get("timestamp", "")
+                    acc = entry.get("account", "Unknown")
+                    biome = entry.get("biome", "?")
+                    found = entry.get("found", [])
+                    found_str = ", ".join(found) if found else "None"
+                    
+                    text = Text()
+                    text.append(f"[{ts}] ", style="bright_black")
+                    text.append(f"[{acc}] ", style="cyan")
+                    text.append("Biome: ", style="white")
+                    text.append(f"{biome} ", style="bold magenta")
+                    text.append("Aura: ", style="white")
+                    text.append(f"{found_str}", style="bold yellow")
+                    aura_log.write(text)
+        except Exception as e:
             pass
 
         # Timeline

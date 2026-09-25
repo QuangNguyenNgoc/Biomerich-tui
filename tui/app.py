@@ -17,6 +17,7 @@ from tui.screens.automation import AutomationScreen
 from tui.screens.performance import PerformanceScreen
 from tui.screens.logs import LogsScreen
 from tui.screens.webhooks import WebhooksScreen
+from tui.screens.about import AboutScreen
 
 # Navigation menu items
 NAV_ITEMS = [
@@ -27,6 +28,7 @@ NAV_ITEMS = [
     ("performance", "Performance", "5"),
     ("logs", "Logs", "6"),
     ("webhooks", "Webhooks", "7"),
+    ("about", "About", "8"),
 ]
 
 SCREEN_MAP = {
@@ -37,6 +39,7 @@ SCREEN_MAP = {
     "performance": PerformanceScreen,
     "logs": LogsScreen,
     "webhooks": WebhooksScreen,
+    "about": AboutScreen,
 }
 
 

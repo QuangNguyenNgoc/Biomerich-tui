@@ -192,6 +192,14 @@ class AppController:
 
         entries, head = activity_log.since(since_id)
         return {"entries": entries, "head": head}
+    def get_aura_log(self, since_id: int = 0) -> list:
+        try:
+            if hasattr(self.engine, "aura") and self.engine.aura:
+                return self.engine.aura.aura_log(since_id)
+        except Exception:
+            pass
+        return []
+
 
     def get_event_log(self, since_id: int = 0) -> list:
         from core import event_log
@@ -340,6 +348,51 @@ class AppController:
         import webbrowser
 
         webbrowser.open(url)
+    def get_token_security_status(self) -> dict:
+        return self.config.token_security_status()
+
+    def clear_account_token(self, acc_id: str) -> dict:
+        try:
+            self.config.clear_account_token(acc_id)
+            self.config.save()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def clear_all_account_tokens(self) -> dict:
+        try:
+            self.config.clear_all_account_tokens()
+            self.config.save()
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def revalidate_account_token(self, acc_id: str) -> dict:
+        try:
+            token = self.config.account_token(acc_id)
+            if not token:
+                return {"ok": False, "error": "No token"}
+            from core import roblox_auth
+            info = roblox_auth.validate_token(token)
+            if info.get("refreshed"):
+                self.config.set_account_token(acc_id, info["refreshed"])
+                
+            if info.get("ok") or info.get("refreshed"):
+                self.config.set_account_token_status(
+                    acc_id, info.get("name", ""), True, info.get("id")
+                )
+                self.config.save()
+                return {"ok": True, "user": info.get("name", "")}
+                
+            if info.get("definitive"):
+                self.config.set_account_token_status(acc_id, "", False)
+                self.config.save()
+                return {"ok": False, "error": info.get("error")}
+                
+            return {"ok": False, "error": info.get("error"), "transient": True}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
 
     def delete_account(self, acc_id: str) -> dict:
         try:

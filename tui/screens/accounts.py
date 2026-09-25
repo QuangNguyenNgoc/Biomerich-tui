@@ -197,6 +197,16 @@ class AccountsScreen(VerticalScroll):
         self.query_one("#btn-move-up", Button).disabled = not has_selection
         self.query_one("#btn-move-down", Button).disabled = not has_selection
         self.query_one("#btn-toggle", Button).disabled = not has_selection
+        self.query_one("#btn-revalidate-token", Button).disabled = not has_selection
+        self.query_one("#btn-clear-token", Button).disabled = not has_selection
+        
+        ctrl = self.app.controller
+        if ctrl:
+            sec = ctrl.get_token_security_status()
+            lbl = self.query_one("#lbl-token-security", Label)
+            provider = sec.get("provider", "Unknown")
+            count = sec.get("count", 0)
+            lbl.update(f"Tokens Protected via: [bold cyan]{provider}[/bold cyan] ({count} stored)")
 
     def _on_dialog_closed(self, result) -> None:
         if result:
