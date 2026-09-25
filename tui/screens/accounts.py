@@ -56,6 +56,15 @@ class AccountsScreen(VerticalScroll):
                 "Delete Selected", variant="error", id="btn-delete", disabled=True
             )
 
+        yield Label("Token Management", classes="title", id="token-mgmt-title")
+        with Horizontal(classes="action-row", id="token-actions"):
+            yield Label("Security: Loading...", id="lbl-token-security")
+            yield Button(
+                "Revalidate Selected", id="btn-revalidate-token", disabled=True
+            )
+            yield Button("Clear Selected", id="btn-clear-token", disabled=True)
+            yield Button("Clear ALL Tokens", variant="error", id="btn-clear-all-tokens")
+
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
         table.add_columns(
@@ -199,14 +208,16 @@ class AccountsScreen(VerticalScroll):
         self.query_one("#btn-toggle", Button).disabled = not has_selection
         self.query_one("#btn-revalidate-token", Button).disabled = not has_selection
         self.query_one("#btn-clear-token", Button).disabled = not has_selection
-        
+
         ctrl = self.app.controller
         if ctrl:
             sec = ctrl.get_token_security_status()
             lbl = self.query_one("#lbl-token-security", Label)
             provider = sec.get("provider", "Unknown")
             count = sec.get("count", 0)
-            lbl.update(f"Tokens Protected via: [bold cyan]{provider}[/bold cyan] ({count} stored)")
+            lbl.update(
+                f"Tokens Protected via: [bold cyan]{provider}[/bold cyan] ({count} stored)"
+            )
 
     def _on_dialog_closed(self, result) -> None:
         if result:

@@ -190,8 +190,8 @@ class AppController:
     def get_activity_log(self, since_id: int = 0) -> dict:
         from core import activity_log
 
-        entries, head = activity_log.since(since_id)
-        return {"entries": entries, "head": head}
+        res = activity_log.since(since_id)
+        return {"entries": res.get("entries", []), "head": res.get("last", since_id)}
     def get_aura_log(self, since_id: int = 0) -> list:
         try:
             if hasattr(self.engine, "aura") and self.engine.aura:
@@ -217,6 +217,27 @@ class AppController:
 
     def set_setting(self, key: str, value: Any) -> None:
         self.config.settings[key] = value
+        
+        # Apply changes live to subsystems
+        if key == "hotkey":
+            self.register_hotkeys()
+        elif key == "modeHotkey":
+            self.register_hotkeys()
+        elif key in ("ramTrimEnabled", "ramTrimInterval"):
+            if hasattr(self, "ram_trimmer"):
+                self.ram_trimmer.sync()
+        elif key.startswith("throttle"):
+            if hasattr(self, "throttler"):
+                self.throttler.sync()
+        elif key.startswith("antiAfk"):
+            if hasattr(self.engine, "refresh_anti_afk"):
+                self.engine.refresh_anti_afk()
+        elif key in ("monitorDimEnabled", "monitorDimLevel") and self.engine.running:
+            from core import monitor_dim
+            if self.config.settings.get("monitorDimEnabled"):
+                monitor_dim.start(self.config.settings.get("monitorDimLevel", 40))
+            else:
+                monitor_dim.stop()
 
     def save_config(self) -> None:
         self.config.save()

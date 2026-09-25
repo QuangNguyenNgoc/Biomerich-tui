@@ -1,9 +1,9 @@
-"""Logs screen — activity log, event log, account timeline."""
+"""Logs screen - activity log, event log, aura log."""
 
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.containers import VerticalScroll
-from textual.widgets import Static, RichLog, TabbedContent, TabPane, Button
+from textual.widgets import Static, RichLog, TabbedContent, TabPane
 from textual.containers import Vertical
 
 from rich.panel import Panel
@@ -11,7 +11,7 @@ from rich.text import Text
 
 
 class LogsScreen(VerticalScroll):
-    """Log viewer with tabs for activity, events, and timeline."""
+    """Log viewer with tabs for activity, events, and aura."""
 
     DEFAULT_CSS = """
     LogsScreen {
@@ -37,8 +37,6 @@ class LogsScreen(VerticalScroll):
                     max_lines=150,
                     id="event-log",
                 )
-            with TabPane("Timeline", id="tab-timeline"):
-                yield Static(id="timeline-view")
             with TabPane("Aura Log", id="tab-aura"):
                 yield RichLog(
                     highlight=True,
@@ -55,16 +53,15 @@ class LogsScreen(VerticalScroll):
         self.set_interval(1.0, self._poll_logs)
 
     def _poll_logs(self) -> None:
-        """Poll controller for new log entries."""
         ctrl = self.app.controller
         if ctrl is None:
             return
 
         # Activity log
         try:
-            result = ctrl.get_activity_log(self._last_activity_id)
-            entries = result.get("entries", [])
-            head = result.get("head", self._last_activity_id)
+            res = ctrl.get_activity_log(self._last_activity_id)
+            entries = res.get("entries", [])
+            head = res.get("head", self._last_activity_id)
             activity_log = self.query_one("#activity-log", RichLog)
             for entry in entries:
                 kind = entry.get("kind", "info")
@@ -80,13 +77,12 @@ class LogsScreen(VerticalScroll):
                 }
                 style = style_map.get(kind, "white")
 
-                log_line = Text()
-                log_line.append(f"{ts} ", style="dim")
+                line = Text()
+                line.append(f"[{ts}] ", style="bright_black")
                 if account:
-                    log_line.append(f"{account} ", style="cyan")
-                log_line.append(text, style=style)
-
-                activity_log.write(log_line)
+                    line.append(f"[{account}] ", style="cyan")
+                line.append(str(text), style=style)
+                activity_log.write(line)
 
             self._last_activity_id = head
         except Exception:
@@ -114,12 +110,12 @@ class LogsScreen(VerticalScroll):
                 ev_line = Text()
                 ev_line.append("● ", style=color)
                 ev_line.append(title, style=color)
-                ev_line.append(f"  {detail}")
+                if detail:
+                    ev_line.append(f"  {detail}")
 
                 event_log.write(ev_line)
         except Exception:
             pass
-
 
         # Aura log
         try:
@@ -135,7 +131,7 @@ class LogsScreen(VerticalScroll):
                     biome = entry.get("biome", "?")
                     found = entry.get("found", [])
                     found_str = ", ".join(found) if found else "None"
-                    
+
                     text = Text()
                     text.append(f"[{ts}] ", style="bright_black")
                     text.append(f"[{acc}] ", style="cyan")
@@ -144,51 +140,5 @@ class LogsScreen(VerticalScroll):
                     text.append("Aura: ", style="white")
                     text.append(f"{found_str}", style="bold yellow")
                     aura_log.write(text)
-        except Exception as e:
-            pass
-
-        # Timeline
-        try:
-            from core.account_timeline import get_all_summaries
-            import datetime
-
-            summaries = get_all_summaries()
-            timeline_view = self.query_one("#timeline-view", Static)
-            if not summaries:
-                timeline_view.update(
-                    Panel(
-                        "[dim]No timeline data available yet.[/dim]", title="Timeline"
-                    )
-                )
-            else:
-                from rich.table import Table
-
-                table = Table(expand=True, box=None)
-                table.add_column("Account", style="cyan")
-                table.add_column("State", style="bold")
-                table.add_column("Duration", justify="right")
-
-                for account_id, summary in summaries.items():
-                    name = summary.get("name") or account_id
-                    current_state = summary.get("current_state")
-                    state_text = ""
-                    if current_state:
-                        st = current_state.get("state", "unknown")
-                        since = current_state.get("since", 0)
-                        dur = int(datetime.datetime.now().timestamp() - since)
-
-                        m, s = divmod(dur, 60)
-                        h, m = divmod(m, 60)
-                        dur_str = f"{h:02d}:{m:02d}:{s:02d}"
-
-                        color = (
-                            "green"
-                            if st == "running"
-                            else "dim" if st == "stopped" else "yellow"
-                        )
-                        state_text = f"[{color}]{st}[/{color}]"
-                        table.add_row(name, state_text, dur_str)
-
-                timeline_view.update(Panel(table, title="Account Timeline"))
         except Exception:
             pass

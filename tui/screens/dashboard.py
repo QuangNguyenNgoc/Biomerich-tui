@@ -1,4 +1,4 @@
-"""Dashboard screen — main overview with engine status, biome, accounts."""
+"""Dashboard screen - main overview with engine status, biome, accounts."""
 
 from textual.app import ComposeResult
 from textual.screen import Screen
@@ -19,77 +19,35 @@ class DashboardScreen(VerticalScroll):
     ]
 
     DEFAULT_CSS = """
-    
-    
     DashboardScreen {
         layout: grid;
-        grid-size: 2 3;
+        grid-size: 1 3;
         grid-gutter: 1;
         padding: 1;
     }
 
-    #engine-panel { row-span: 1; column-span: 1; height: auto; border: solid $primary; padding: 1; }
-    #biome-panel { row-span: 1; column-span: 1; height: auto; border: solid $secondary; padding: 1; }
-    #stats-panel { row-span: 1; column-span: 1; height: auto; border: solid $warning; padding: 1; }
     #accounts-panel { row-span: 1; column-span: 1; height: auto; border: solid $accent; padding: 1; }
+    #stats-panel { row-span: 1; column-span: 1; height: auto; border: solid $warning; padding: 1; }
     #activity-panel { row-span: 1; column-span: 1; height: 1fr; border: solid $success; padding: 1; }
-    #timeline-panel { row-span: 1; column-span: 1; height: 1fr; border: solid $surface; padding: 1; }
-
-
     """
 
     def compose(self) -> ComposeResult:
-        yield Static(id="engine-panel")
-        yield Static(id="biome-panel")
-        yield Static(id="stats-panel")
         yield Static(id="accounts-panel")
+        yield Static(id="stats-panel")
         yield Static(id="activity-panel")
-        yield Static(id="timeline-panel")
 
     def on_mount(self) -> None:
         self._refresh_panels()
         self.set_interval(1.0, self._refresh_panels)
 
     def _refresh_panels(self) -> None:
-        """Refresh all dashboard panels from controller state."""
         ctrl = self.app.controller
         if ctrl is None:
             return
 
-        # Engine panel
-        engine_panel = self.query_one("#engine-panel", Static)
-        running = ctrl.is_engine_running()
-        mode = ctrl.get_engine_mode()
-        status_icon = "🟢 RUNNING" if running else "🔴 STOPPED"
-        engine_panel.update(
-            Panel(
-                f"{status_icon}\nMode: [bold]{mode}[/bold]",
-                title="[bold]Macro Engine[/bold]",
-                border_style="green" if running else "red",
-            )
-        )
-
-        # Biome panel
-        biome_panel = self.query_one("#biome-panel", Static)
-        accounts_live = ctrl.get_live_accounts()
-        biome_text = ""
-        for acc in accounts_live:
-            name = acc.get("name", "?")
-            biome = acc.get("currentBiome") or "Normal"
-            online = "🟢" if acc.get("online") else "🔴"
-            biome_text += f"{online} {name}: [bold cyan]{biome}[/bold cyan]\n"
-        if not biome_text:
-            biome_text = "[dim]No accounts configured[/dim]"
-        biome_panel.update(
-            Panel(
-                biome_text.strip(),
-                title="[bold]Active Biomes[/bold]",
-                border_style="cyan",
-            )
-        )
-
-        # Accounts panel
+        # 1. Accounts panel (Top priority)
         accounts_panel = self.query_one("#accounts-panel", Static)
+        accounts_live = ctrl.get_live_accounts()
         table = Table(title="Accounts", expand=True, show_lines=False)
         table.add_column("#", style="dim", width=3)
         table.add_column("Name", style="cyan")
@@ -111,43 +69,63 @@ class DashboardScreen(VerticalScroll):
             )
 
         accounts_panel.update(Panel(table, border_style="blue"))
-        # Stats panel (Time Tracking & Eden/Biome)
+
+        # 2. Stats panel (Time Tracking & Eden/Biome)
         stats_panel = self.query_one("#stats-panel", Static)
         try:
-            from core import time_tracking
-            from core.macro_engine import engine
+            engine = ctrl.engine
+            if engine and hasattr(engine, "time"):
+                stats = engine.time.live()
 
-            session = time_tracking.get_session_time()
-            total = time_tracking.get_total_time()
+                # Format session
+                session_secs = engine.uptime if hasattr(engine, "uptime") else 0
+                m, s = divmod(int(session_secs), 60)
+                h, m = divmod(m, 60)
+                session = f"{h:02d}:{m:02d}:{s:02d}"
 
-            afk_txt = ""
-            if engine and hasattr(engine, "anti_afk"):
-                s = engine.anti_afk.status()
-                afk_txt = f"Anti-AFK: [cyan]{s.get('state', 'N/A')}[/cyan]"
+                # Format total
+                total_secs = stats.get("totalEngine", 0)
+                m, s = divmod(int(total_secs), 60)
+                h, m = divmod(m, 60)
+                total = f"{h:02d}:{m:02d}:{s:02d}"
 
-            stats_text = f"Session Uptime: [bold]{session}[/bold]\\nTotal Uptime: [bold]{total}[/bold]\\n{afk_txt}"
+                afk_txt = ""
+                if hasattr(engine, "anti_afk"):
+                    is_on = engine.anti_afk.enabled()
+                    afk_txt = f"Anti-AFK: [cyan]{'On' if is_on else 'Off'}[/cyan]"
+
+                stats_text = f"Session Uptime: [bold]{session}[/bold]\nTotal Uptime: [bold]{total}[/bold]\n{afk_txt}"
+                stats_panel.update(
+                    Panel(
+                        stats_text,
+                        title="[bold]Stats & Tracking[/bold]",
+                        border_style="yellow",
+                    )
+                )
+            else:
+                stats_panel.update(
+                    Panel(
+                        "Waiting for Engine...",
+                        title="[bold]Stats & Tracking[/bold]",
+                        border_style="yellow",
+                    )
+                )
+        except Exception as e:
             stats_panel.update(
                 Panel(
-                    stats_text,
+                    f"Error: {e}",
                     title="[bold]Stats & Tracking[/bold]",
                     border_style="yellow",
                 )
             )
-        except Exception:
-            stats_panel.update(
-                Panel(
-                    "Loading...",
-                    title="[bold]Stats & Tracking[/bold]",
-                    border_style="yellow",
-                )
-            )
 
-        # Activity Panel (mini view)
+        # 3. Activity Panel (mini view)
         activity_panel = self.query_one("#activity-panel", Static)
         try:
             from core import activity_log
 
-            entries, _ = activity_log.since(max(0, activity_log._seq - 10))
+            res = activity_log.since(max(0, activity_log._seq - 10))
+            entries = res.get("entries", [])
             if not entries:
                 activity_panel.update(
                     Panel(
@@ -159,8 +137,8 @@ class DashboardScreen(VerticalScroll):
             else:
                 lines = []
                 for e in entries[-5:]:
-                    ts = e.get("timestamp", "").split(" ")[-1]
-                    cat = e.get("category", "?")
+                    ts = e.get("ts", "")
+                    cat = e.get("category") or e.get("kind", "?")
                     txt = str(e.get("text", ""))[:40]
                     lines.append(f"[[dim]{ts}[/dim]] [[cyan]{cat}[/cyan]] {txt}")
                 activity_panel.update(
@@ -168,37 +146,12 @@ class DashboardScreen(VerticalScroll):
                         "\n".join(lines), title="Recent Activity", border_style="green"
                     )
                 )
-        except Exception:
-            pass
-
-        # Timeline Panel
-        timeline_panel = self.query_one("#timeline-panel", Static)
-        try:
-            from core import account_timeline
-
-            summaries = account_timeline.get_all_summaries()
-            if not summaries:
-                timeline_panel.update(
-                    Panel(
-                        "[dim]No timeline data[/dim]",
-                        title="Timeline",
-                        border_style="white",
-                    )
-                )
-            else:
-                lines = []
-                for acc, sum_str in list(summaries.items())[:5]:
-                    lines.append(f"[bold]{acc}[/bold]: {sum_str[:40]}")
-                timeline_panel.update(
-                    Panel(
-                        "\n".join(lines), title="Recent Timeline", border_style="white"
-                    )
-                )
-        except Exception:
-            pass
+        except Exception as e:
+            activity_panel.update(
+                Panel(f"Error: {e}", title="Activity Log", border_style="red")
+            )
 
     def action_toggle_engine(self) -> None:
-        """Toggle macro engine start/stop."""
         ctrl = self.app.controller
         if ctrl is None:
             return
