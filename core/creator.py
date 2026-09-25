@@ -10,12 +10,11 @@ YT_CHANNEL_URL = "https://www.youtube.com/channel/" + YT_CHANNEL_ID
 ROBLOX_PROFILE_URL = "https://www.roblox.com/"
 DISCORD_URL = "https://discord.gg/X7dbbQ5pXV"
 
-CREATOR_NOTES = (
-    "hi"
-)
+CREATOR_NOTES = "hi"
 
 _CACHE_TTL = 60
 _cache = {"ts": 0.0, "data": None}
+
 
 def _fetch_subs():
     try:
@@ -25,7 +24,13 @@ def _fetch_subs():
         )
         data = r.json()
         if isinstance(data, dict):
-            for key in ("est_sub", "subscriberCount", "subscribers", "count", "sub_count"):
+            for key in (
+                "est_sub",
+                "subscriberCount",
+                "subscribers",
+                "count",
+                "sub_count",
+            ):
                 value = data.get(key)
                 if isinstance(value, (int, float)) and value >= 0:
                     return int(value)
@@ -48,6 +53,7 @@ def _fetch_subs():
     except (requests.RequestException, ValueError, KeyError, IndexError):
         pass
     return None
+
 
 def _is_livestream(entry_xml: str) -> bool:
 
@@ -72,6 +78,7 @@ def _is_livestream(entry_xml: str) -> bool:
         except Exception:
             pass
     return False
+
 
 def _fetch_latest_video():
     try:
@@ -103,6 +110,7 @@ def _fetch_latest_video():
         pass
     return None
 
+
 def get_stats(force=False):
     now = time.time()
     if not force and _cache["data"] and now - _cache["ts"] < _CACHE_TTL:
@@ -111,6 +119,7 @@ def get_stats(force=False):
     _cache["data"] = data
     _cache["ts"] = now
     return data
+
 
 def links():
     return {

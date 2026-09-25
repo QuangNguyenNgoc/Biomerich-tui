@@ -1,5 +1,3 @@
-
-
 import sys
 import threading
 import time
@@ -33,24 +31,45 @@ if IS_WINDOWS:
     BLACK_BRUSH = 4
     PM_REMOVE = 0x0001
 
-    WNDPROC = ctypes.WINFUNCTYPE(ctypes.c_ssize_t, wintypes.HWND, wintypes.UINT,
-                                 wintypes.WPARAM, wintypes.LPARAM)
-    MONITORENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, ctypes.c_void_p, ctypes.c_void_p,
-                                         ctypes.POINTER(wintypes.RECT), wintypes.LPARAM)
+    WNDPROC = ctypes.WINFUNCTYPE(
+        ctypes.c_ssize_t, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM
+    )
+    MONITORENUMPROC = ctypes.WINFUNCTYPE(
+        wintypes.BOOL,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.POINTER(wintypes.RECT),
+        wintypes.LPARAM,
+    )
 
     class WNDCLASSW(ctypes.Structure):
         _fields_ = [
-            ("style", wintypes.UINT), ("lpfnWndProc", WNDPROC),
-            ("cbClsExtra", ctypes.c_int), ("cbWndExtra", ctypes.c_int),
-            ("hInstance", wintypes.HINSTANCE), ("hIcon", wintypes.HICON),
-            ("hCursor", ctypes.c_void_p), ("hbrBackground", wintypes.HBRUSH),
-            ("lpszMenuName", wintypes.LPCWSTR), ("lpszClassName", wintypes.LPCWSTR),
+            ("style", wintypes.UINT),
+            ("lpfnWndProc", WNDPROC),
+            ("cbClsExtra", ctypes.c_int),
+            ("cbWndExtra", ctypes.c_int),
+            ("hInstance", wintypes.HINSTANCE),
+            ("hIcon", wintypes.HICON),
+            ("hCursor", ctypes.c_void_p),
+            ("hbrBackground", wintypes.HBRUSH),
+            ("lpszMenuName", wintypes.LPCWSTR),
+            ("lpszClassName", wintypes.LPCWSTR),
         ]
 
-    user32.DefWindowProcW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
+    user32.DefWindowProcW.argtypes = (
+        wintypes.HWND,
+        wintypes.UINT,
+        wintypes.WPARAM,
+        wintypes.LPARAM,
+    )
     user32.DefWindowProcW.restype = ctypes.c_ssize_t
     user32.CreateWindowExW.restype = wintypes.HWND
-    user32.SetLayeredWindowAttributes.argtypes = (wintypes.HWND, wintypes.DWORD, ctypes.c_ubyte, wintypes.DWORD)
+    user32.SetLayeredWindowAttributes.argtypes = (
+        wintypes.HWND,
+        wintypes.DWORD,
+        ctypes.c_ubyte,
+        wintypes.DWORD,
+    )
     user32.SetWindowDisplayAffinity.argtypes = (wintypes.HWND, wintypes.DWORD)
     user32.SetWindowDisplayAffinity.restype = wintypes.BOOL
 
@@ -81,21 +100,28 @@ if IS_WINDOWS:
                     return None
             _class_registered = True
 
-        ex = (WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW
-              | WS_EX_NOACTIVATE | WS_EX_TOPMOST)
+        ex = (
+            WS_EX_LAYERED
+            | WS_EX_TRANSPARENT
+            | WS_EX_TOOLWINDOW
+            | WS_EX_NOACTIVATE
+            | WS_EX_TOPMOST
+        )
         hwnds = []
         for x, y, w, h in _monitor_rects():
-            hwnd = user32.CreateWindowExW(ex, _CLASS_NAME, None, WS_POPUP,
-                                          x, y, w, h, None, None, None, None)
+            hwnd = user32.CreateWindowExW(
+                ex, _CLASS_NAME, None, WS_POPUP, x, y, w, h, None, None, None, None
+            )
             if not hwnd:
                 continue
             user32.SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA)
             if not user32.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE):
 
-
                 for hw in hwnds + [hwnd]:
                     user32.DestroyWindow(hw)
-                print("[MonitorDim] WDA_EXCLUDEFROMCAPTURE unavailable; dimming disabled.")
+                print(
+                    "[MonitorDim] WDA_EXCLUDEFROMCAPTURE unavailable; dimming disabled."
+                )
                 return None
             user32.ShowWindow(hwnd, SW_SHOWNOACTIVATE)
             hwnds.append(hwnd)
@@ -122,7 +148,11 @@ if IS_WINDOWS:
                     break
                 if alpha != target:
                     step = 255.0 / (FADE_SECS / 0.016)
-                    alpha = min(alpha + step, target) if alpha < target else max(alpha - step, target)
+                    alpha = (
+                        min(alpha + step, target)
+                        if alpha < target
+                        else max(alpha - step, target)
+                    )
                     for hw in hwnds:
                         user32.SetLayeredWindowAttributes(hw, 0, int(alpha), LWA_ALPHA)
                 time.sleep(0.016)
@@ -142,7 +172,7 @@ def _alpha_for(level_pct) -> int:
 
 
 def start(level_pct):
-    
+
     global _thread, _target, _stop
     if not IS_WINDOWS:
         return
@@ -155,7 +185,7 @@ def start(level_pct):
 
 
 def stop():
-    
+
     global _stop
     with _lock:
         _stop = True

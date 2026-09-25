@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import re
@@ -8,7 +6,6 @@ from typing import Iterable, Optional
 
 from . import calibration_presets
 
-
 _PRESET_RE = re.compile(
     r"^\[[^\]]+\]\s+(WINDOWED|FULLSCREEN)\s+(\d+)\s*[x×]\s*(\d+)\s+\((\d+)%\)\s*$",
     re.IGNORECASE,
@@ -16,7 +13,7 @@ _PRESET_RE = re.compile(
 
 
 def parse_preset_name(name: str) -> Optional[dict]:
-    
+
     match = _PRESET_RE.match(str(name or "").strip())
     if not match:
         return None
@@ -41,8 +38,10 @@ def _preset_entries(presets):
     return entries
 
 
-def recommend_preset_details(presets: Iterable, target: Optional[dict]) -> Optional[dict]:
-    
+def recommend_preset_details(
+    presets: Iterable, target: Optional[dict]
+) -> Optional[dict]:
+
     if not target:
         return None
     target_width = int(target.get("width") or 0)
@@ -53,9 +52,7 @@ def recommend_preset_details(presets: Iterable, target: Optional[dict]) -> Optio
 
     wanted = (target_width, target_height, target_scale, target_mode)
     for entry in entries:
-        signature = (
-            entry["width"], entry["height"], entry["scale"], entry["mode"]
-        )
+        signature = (entry["width"], entry["height"], entry["scale"], entry["mode"])
         if signature == wanted:
             return {
                 "name": entry["name"],
@@ -72,8 +69,10 @@ def recommend_preset_details(presets: Iterable, target: Optional[dict]) -> Optio
     return None
 
 
-def recommend_preset(preset_names: Iterable[str], target: Optional[dict]) -> Optional[str]:
-    
+def recommend_preset(
+    preset_names: Iterable[str], target: Optional[dict]
+) -> Optional[str]:
+
     match = recommend_preset_details(preset_names, target)
     return match["name"] if match else None
 
@@ -91,7 +90,7 @@ def _unsupported(error: str = "unsupported") -> dict:
 
 
 def inspect_displays(preset_names: Iterable[str]) -> dict:
-    
+
     if sys.platform != "win32":
         return _unsupported()
 
@@ -152,7 +151,7 @@ def inspect_displays(preset_names: Iterable[str]) -> dict:
 
 
 def _read_windows_displays():
-    
+
     import ctypes
     from ctypes import wintypes
 
@@ -166,8 +165,10 @@ def _read_windows_displays():
 
     class RECT(ctypes.Structure):
         _fields_ = [
-            ("left", wintypes.LONG), ("top", wintypes.LONG),
-            ("right", wintypes.LONG), ("bottom", wintypes.LONG),
+            ("left", wintypes.LONG),
+            ("top", wintypes.LONG),
+            ("right", wintypes.LONG),
+            ("bottom", wintypes.LONG),
         ]
 
     class MONITORINFOEXW(ctypes.Structure):
@@ -188,7 +189,10 @@ def _read_windows_displays():
         wintypes.LPARAM,
     )
     user32.EnumDisplayMonitors.argtypes = (
-        wintypes.HDC, ctypes.POINTER(RECT), enum_proc_type, wintypes.LPARAM,
+        wintypes.HDC,
+        ctypes.POINTER(RECT),
+        enum_proc_type,
+        wintypes.LPARAM,
     )
     user32.EnumDisplayMonitors.restype = wintypes.BOOL
     user32.GetMonitorInfoW.argtypes = (monitor_handle, ctypes.POINTER(MONITORINFOEXW))
@@ -214,7 +218,12 @@ def _read_windows_displays():
         dpi = 96
         if shcore is not None:
             x_dpi, y_dpi = wintypes.UINT(96), wintypes.UINT(96)
-            if shcore.GetDpiForMonitor(handle, 0, ctypes.byref(x_dpi), ctypes.byref(y_dpi)) == 0:
+            if (
+                shcore.GetDpiForMonitor(
+                    handle, 0, ctypes.byref(x_dpi), ctypes.byref(y_dpi)
+                )
+                == 0
+            ):
                 dpi = int(x_dpi.value or 96)
         return dpi, max(100, int(round((dpi / 96.0) * 100)))
 
@@ -227,23 +236,25 @@ def _read_windows_displays():
             return True
         dpi, scale = monitor_scale(handle)
         rect, work = info.rcMonitor, info.rcWork
-        raw_monitors.append({
-            "handle": handle_value(handle),
-            "device": str(info.szDevice),
-            "x": int(rect.left),
-            "y": int(rect.top),
-            "width": int(rect.right - rect.left),
-            "height": int(rect.bottom - rect.top),
-            "aspectRatio": calibration_presets.aspect_ratio(
-                int(rect.right - rect.left), int(rect.bottom - rect.top)
-            ),
-            "workWidth": int(work.right - work.left),
-            "workHeight": int(work.bottom - work.top),
-            "dpi": dpi,
-            "scale": scale,
-            "primary": bool(info.dwFlags & 1),
-            "robloxWindows": 0,
-        })
+        raw_monitors.append(
+            {
+                "handle": handle_value(handle),
+                "device": str(info.szDevice),
+                "x": int(rect.left),
+                "y": int(rect.top),
+                "width": int(rect.right - rect.left),
+                "height": int(rect.bottom - rect.top),
+                "aspectRatio": calibration_presets.aspect_ratio(
+                    int(rect.right - rect.left), int(rect.bottom - rect.top)
+                ),
+                "workWidth": int(work.right - work.left),
+                "workHeight": int(work.bottom - work.top),
+                "dpi": dpi,
+                "scale": scale,
+                "primary": bool(info.dwFlags & 1),
+                "robloxWindows": 0,
+            }
+        )
         return True
 
     callback = enum_proc_type(collect)
@@ -259,23 +270,30 @@ def _read_windows_displays():
     ws_caption = 0x00C00000
     monitor_default_to_nearest = 2
     for hwnd, _pid in win_windows.roblox_windows():
-        handle = user32.MonitorFromWindow(wintypes.HWND(int(hwnd)), monitor_default_to_nearest)
+        handle = user32.MonitorFromWindow(
+            wintypes.HWND(int(hwnd)), monitor_default_to_nearest
+        )
         monitor = by_handle.get(handle_value(handle))
         if not monitor:
             continue
         monitor["robloxWindows"] += 1
         style = int(user32.GetWindowLongW(wintypes.HWND(int(hwnd)), -16))
         mode = "WINDOWED" if style & ws_caption else "FULLSCREEN"
-        targets.append({
-            "displayId": monitor["id"],
-            "device": monitor["device"],
-            "x": monitor["x"],
-            "y": monitor["y"],
-            "width": monitor["width"],
-            "height": monitor["height"],
-            "scale": monitor["scale"],
-            "mode": mode,
-        })
+        targets.append(
+            {
+                "displayId": monitor["id"],
+                "device": monitor["device"],
+                "x": monitor["x"],
+                "y": monitor["y"],
+                "width": monitor["width"],
+                "height": monitor["height"],
+                "scale": monitor["scale"],
+                "mode": mode,
+            }
+        )
 
-    monitors = [{key: value for key, value in item.items() if key != "handle"} for item in raw_monitors]
+    monitors = [
+        {key: value for key, value in item.items() if key != "handle"}
+        for item in raw_monitors
+    ]
     return monitors, targets

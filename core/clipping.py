@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import re
@@ -7,7 +5,6 @@ import threading
 
 from .aura import aura_key
 from . import decision_trace
-
 
 CLIP_BIOMES = ("glitched", "dreamspace", "cyberspace", "singularity")
 MAX_DELAY_SECONDS = 60 * 60
@@ -33,21 +30,21 @@ def _delay(value, default=0) -> int:
 def _name_keys(value) -> set[str]:
     if not isinstance(value, str):
         return set()
-    return {
-        key
-        for part in re.split(r"[,\n;]+", value)
-        if (key := aura_key(part))
-    }
+    return {key for part in re.split(r"[,\n;]+", value) if (key := aura_key(part))}
 
 
 def biome_clip_decision(biome_key, settings, result) -> dict:
-    
+
     settings = settings or {}
     result = result or {}
     key = str(biome_key or "").strip().casefold()
     display = key.replace("_", " ").title() or "Unknown biome"
     selected = settings.get("clipBiomes", list(CLIP_BIOMES))
-    selected = {str(item).strip().casefold() for item in selected} if isinstance(selected, list) else set()
+    selected = (
+        {str(item).strip().casefold() for item in selected}
+        if isinstance(selected, list)
+        else set()
+    )
     enabled = bool(settings.get("clippingEnabled", False))
     hotkey = str(settings.get("clipHotkey") or "F8").strip() or "Not set"
     delay = _delay(settings.get("clipBiomeDelay", 60), 60)
@@ -56,7 +53,10 @@ def biome_clip_decision(biome_key, settings, result) -> dict:
     checks = [
         decision_trace.check("Automatic Clipping is enabled", enabled),
         decision_trace.check("Biome is selected for clipping", key in selected),
-        decision_trace.check("Clip hotkey is valid and available", error != "invalid_or_conflicting_hotkey"),
+        decision_trace.check(
+            "Clip hotkey is valid and available",
+            error != "invalid_or_conflicting_hotkey",
+        ),
         decision_trace.check("Clip was scheduled", scheduled),
     ]
     facts = [
@@ -67,9 +67,13 @@ def biome_clip_decision(biome_key, settings, result) -> dict:
     next_step = {"label": "Open Clip Settings", "tab": "modules", "drawer": "clipping"}
     if scheduled:
         return decision_trace.make(
-            "waiting", "clip_scheduled", "Automatic Clipping",
+            "waiting",
+            "clip_scheduled",
+            "Automatic Clipping",
             f"A {display} clip was scheduled and will use {hotkey} after {delay} seconds.",
-            checks=checks, facts=facts, next_step=next_step,
+            checks=checks,
+            facts=facts,
+            next_step=next_step,
         )
     summaries = {
         "not_selected": f"No clip was scheduled because {display} is not selected in Biome clips.",
@@ -77,32 +81,48 @@ def biome_clip_decision(biome_key, settings, result) -> dict:
         "invalid_or_conflicting_hotkey": "No clip was scheduled because the clip hotkey is invalid or conflicts with another macro hotkey.",
         "too_many_pending": "No clip was scheduled because too many clips are already waiting.",
     }
-    status = "failed" if error in {"invalid_or_conflicting_hotkey", "too_many_pending"} else "skipped"
+    status = (
+        "failed"
+        if error in {"invalid_or_conflicting_hotkey", "too_many_pending"}
+        else "skipped"
+    )
     return decision_trace.make(
-        status, error or "clip_not_scheduled", "Automatic Clipping",
+        status,
+        error or "clip_not_scheduled",
+        "Automatic Clipping",
         summaries.get(error, "SolRich could not schedule the biome clip."),
-        checks=checks, facts=facts, next_step=next_step,
+        checks=checks,
+        facts=facts,
+        next_step=next_step,
     )
 
 
 def _clip_fire_decision(status, reason_code, reason, hotkey, summary):
     return decision_trace.make(
-        status, reason_code, "Automatic Clipping", summary,
+        status,
+        reason_code,
+        "Automatic Clipping",
+        summary,
         checks=[
             decision_trace.check("Scheduled delay finished", True),
-            decision_trace.check("Clip hotkey is valid and available", status != "cancelled"),
+            decision_trace.check(
+                "Clip hotkey is valid and available", status != "cancelled"
+            ),
             decision_trace.check("Clip hotkey was sent", status == "acted"),
         ],
         facts=[
             decision_trace.fact("Trigger", reason),
             decision_trace.fact("Clip hotkey", hotkey or "Not set"),
         ],
-        next_step={"label": "Open Clip Settings", "tab": "modules", "drawer": "clipping"},
+        next_step={
+            "label": "Open Clip Settings",
+            "tab": "modules",
+            "drawer": "clipping",
+        },
     )
 
 
 class ClippingController:
-    
 
     def __init__(self, config, sender=None):
         self.config = config
@@ -125,8 +145,6 @@ class ClippingController:
         try:
             import keyboard
 
-
-
             if len(keyboard.parse_hotkey(normalized)) != 1:
                 return ""
         except (ImportError, KeyError, TypeError, ValueError):
@@ -143,8 +161,9 @@ class ClippingController:
 
         keyboard.send(hotkey)
 
-    def _schedule(self, reason, delay_seconds, require_enabled=True,
-                  account=None, account_id=None) -> dict:
+    def _schedule(
+        self, reason, delay_seconds, require_enabled=True, account=None, account_id=None
+    ) -> dict:
         hotkey = self._hotkey()
         if not hotkey:
             return {"ok": False, "error": "invalid_or_conflicting_hotkey"}
@@ -159,12 +178,20 @@ class ClippingController:
                 if require_enabled and not self.enabled():
                     try:
                         from . import status_events
+
                         status_events.push_event(
-                            f"Clip cancelled · {reason}", kind="warn", ttl=5.0,
-                            account=account, account_id=account_id, category="clip",
+                            f"Clip cancelled · {reason}",
+                            kind="warn",
+                            ttl=5.0,
+                            account=account,
+                            account_id=account_id,
+                            category="clip",
                             decision=_clip_fire_decision(
-                                "cancelled", "clipping_disabled_during_delay", reason,
-                                hotkey, "The scheduled clip was cancelled because Automatic Clipping was disabled during the delay.",
+                                "cancelled",
+                                "clipping_disabled_during_delay",
+                                reason,
+                                hotkey,
+                                "The scheduled clip was cancelled because Automatic Clipping was disabled during the delay.",
                             ),
                         )
                     except Exception:
@@ -178,12 +205,20 @@ class ClippingController:
                     )
                     try:
                         from . import status_events
+
                         status_events.push_event(
-                            f"Clip cancelled · {reason}", kind="warn", ttl=5.0,
-                            account=account, account_id=account_id, category="clip",
+                            f"Clip cancelled · {reason}",
+                            kind="warn",
+                            ttl=5.0,
+                            account=account,
+                            account_id=account_id,
+                            category="clip",
                             decision=_clip_fire_decision(
-                                "cancelled", "clip_hotkey_became_invalid", reason,
-                                hotkey, "The scheduled clip was cancelled because the hotkey became invalid or conflicting during the delay.",
+                                "cancelled",
+                                "clip_hotkey_became_invalid",
+                                reason,
+                                hotkey,
+                                "The scheduled clip was cancelled because the hotkey became invalid or conflicting during the delay.",
                             ),
                         )
                     except Exception:
@@ -194,10 +229,17 @@ class ClippingController:
                     from . import status_events
 
                     status_events.push_event(
-                        f"Clip saved · {reason}", kind="good", ttl=4.0,
-                        account=account, account_id=account_id, category="clip",
+                        f"Clip saved · {reason}",
+                        kind="good",
+                        ttl=4.0,
+                        account=account,
+                        account_id=account_id,
+                        category="clip",
                         decision=_clip_fire_decision(
-                            "acted", "clip_hotkey_sent", reason, current_hotkey,
+                            "acted",
+                            "clip_hotkey_sent",
+                            reason,
+                            current_hotkey,
                             f"SolRich sent {current_hotkey} after the configured delay for {reason}.",
                         ),
                     )
@@ -208,11 +250,19 @@ class ClippingController:
                 print(f"[Clipping] Could not send {hotkey}: {exc}")
                 try:
                     from . import status_events
+
                     status_events.push_event(
-                        f"Clip failed · {reason}", kind="bad", ttl=5.0,
-                        account=account, account_id=account_id, category="clip",
+                        f"Clip failed · {reason}",
+                        kind="bad",
+                        ttl=5.0,
+                        account=account,
+                        account_id=account_id,
+                        category="clip",
                         decision=_clip_fire_decision(
-                            "failed", "clip_hotkey_send_failed", reason, hotkey,
+                            "failed",
+                            "clip_hotkey_send_failed",
+                            reason,
+                            hotkey,
                             "The delay finished, but Windows could not send the configured clip hotkey.",
                         ),
                     )
@@ -257,14 +307,10 @@ class ClippingController:
         }
         names.discard("")
         explicit = bool(names & _name_keys(self.settings.get("clipAuraNames")))
-        minimum = _positive_int(
-            self.settings.get("clipAuraMinimumRarity", 99_999_999)
-        )
+        minimum = _positive_int(self.settings.get("clipAuraMinimumRarity", 99_999_999))
         rarity = event.get("rarity")
         meets_rarity = (
-            minimum is not None
-            and isinstance(rarity, int)
-            and rarity >= minimum
+            minimum is not None and isinstance(rarity, int) and rarity >= minimum
         )
         if not explicit and not meets_rarity:
             return {"ok": False, "error": "not_selected"}
@@ -276,7 +322,7 @@ class ClippingController:
         )
 
     def test_hotkey(self) -> dict:
-        
+
         return self._schedule("hotkey test", 5, require_enabled=False)
 
     def stop(self):

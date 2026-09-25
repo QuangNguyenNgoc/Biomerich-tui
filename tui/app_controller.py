@@ -158,16 +158,16 @@ class AppController:
     def get_live_accounts(self) -> list:
         """Merge static account config with live runtime data (online, biome)."""
         state_accounts = self.config.state().get("accounts", [])
-        
+
         # Get live runtime data from engine
         runtime = []
         try:
             runtime = self.engine.account_runtime()
         except Exception:
             pass
-            
+
         rt_map = {r.get("id"): r for r in runtime if r.get("id")}
-        
+
         # Merge
         for acc in state_accounts:
             acc_id = acc.get("id")
@@ -175,7 +175,7 @@ class AppController:
             acc["online"] = rt_data.get("online", False)
             acc["currentBiome"] = rt_data.get("currentBiome", None)
             acc["hwndKnown"] = rt_data.get("hwndKnown", False)
-            
+
         return state_accounts
 
     def get_settings(self) -> dict:
@@ -215,55 +215,15 @@ class AppController:
 
     # ── Account Management ────────────────────────────────────────
 
-    def add_account(self, name: str, link: str = "", token: Optional[str] = None) -> dict:
+    def add_account(self, name: str, token: Optional[str] = None) -> dict:
         try:
-            avatar = ""
-            roblox_user_id = None
-            roblox_username = ""
-            try:
-                from core.macro_engine import MacroEngine
-                profile = MacroEngine.get_roblox_profile(name)
-                avatar = profile.get("avatar", "")
-                roblox_user_id = profile.get("id")
-                roblox_username = profile.get("name", "")
-            except Exception:
-                pass
-            acc = self.config.add_account(
-                name=name,
-                link=link or "",
-                avatar=avatar,
-                roblox_user_id=roblox_user_id,
-                roblox_username=roblox_username,
-            )
-            acc_id = acc.get("id")
-            if token and acc_id:
-                self.config.set_account_token(acc_id, token)
+            result = self.config.add_account(name)
+            if result.get("ok") and token:
+                acc_id = result.get("id")
+                if acc_id:
+                    self.config.set_account_token(acc_id, token)
             self.config.save()
-            return {"ok": True, "id": acc_id, "account": acc}
-        except ValueError as ve:
-            return {"ok": False, "error": str(ve)}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
-
-    def update_account(
-        self,
-        acc_id: str,
-        name: Optional[str] = None,
-        link: Optional[str] = None,
-        token: Optional[str] = None,
-    ) -> dict:
-        try:
-            for acc in self.config.accounts:
-                if acc.get("id") == acc_id:
-                    if name is not None:
-                        acc["name"] = name
-                    if link is not None:
-                        acc["link"] = link
-                    if token:
-                        self.config.set_account_token(acc_id, token)
-                    self.config.save()
-                    return {"ok": True}
-            return {"ok": False, "error": "Account not found"}
+            return result
         except Exception as e:
             return {"ok": False, "error": str(e)}
 

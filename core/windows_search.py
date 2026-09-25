@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import ctypes
@@ -28,7 +26,7 @@ def _is_windows() -> bool:
 
 
 def _current_executable() -> Optional[Path]:
-    
+
     if not getattr(sys, "frozen", False):
         return None
     executable = Path(sys.executable).resolve()
@@ -42,17 +40,19 @@ def _shortcut_path(dev_build: bool = False) -> Path:
     if not roaming:
         raise WindowsSearchError("appdata_unavailable")
     filename = "SolRich Dev.lnk" if dev_build else "SolRich.lnk"
-    return Path(roaming) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / filename
+    return (
+        Path(roaming) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / filename
+    )
 
 
 def _guid(value: str) -> _GUID:
-    
+
     raw = uuid.UUID(value).bytes_le
     return _GUID.from_buffer_copy(raw)
 
 
 def _write_shell_link(destination: Path, target: Path, dev_build: bool = False) -> None:
-    
+
     if not _is_windows():
         raise WindowsSearchError("unsupported_platform")
 
@@ -72,7 +72,9 @@ def _write_shell_link(destination: Path, target: Path, dev_build: bool = False) 
 
     def check(result: int, operation: str) -> None:
         if int(result) < 0:
-            raise WindowsSearchError(f"{operation}_failed_0x{int(result) & 0xFFFFFFFF:08x}")
+            raise WindowsSearchError(
+                f"{operation}_failed_0x{int(result) & 0xFFFFFFFF:08x}"
+            )
 
     def method(pointer: ctypes.c_void_p, index: int, *argtypes):
         table = ctypes.cast(
@@ -111,7 +113,10 @@ def _write_shell_link(destination: Path, target: Path, dev_build: bool = False) 
             "create_shell_link",
         )
 
-        check(method(shell_link, 20, ctypes.c_wchar_p)(shell_link, str(target)), "set_target")
+        check(
+            method(shell_link, 20, ctypes.c_wchar_p)(shell_link, str(target)),
+            "set_target",
+        )
         check(
             method(shell_link, 9, ctypes.c_wchar_p)(shell_link, str(target.parent)),
             "set_working_directory",
@@ -170,7 +175,7 @@ def _write_shell_link(destination: Path, target: Path, dev_build: bool = False) 
 
 
 def status(dev_build: bool = False) -> dict:
-    
+
     if not _is_windows():
         return {
             "ok": True,
@@ -207,7 +212,7 @@ def install(
     *,
     writer: Callable[[Path, Path, bool], None] = _write_shell_link,
 ) -> dict:
-    
+
     current = status(dev_build)
     if not current.get("supported"):
         return {**current, "ok": False}
@@ -217,14 +222,18 @@ def install(
     try:
         destination = _shortcut_path(dev_build)
         writer(destination, target, dev_build)
-        return {**status(dev_build), "ok": True, "repaired": bool(current.get("installed"))}
+        return {
+            **status(dev_build),
+            "ok": True,
+            "repaired": bool(current.get("installed")),
+        }
     except Exception as exc:
         print(f"[Windows Search] Could not create shortcut: {exc}")
         return {**status(dev_build), "ok": False, "error": "shortcut_create_failed"}
 
 
 def uninstall(dev_build: bool = False) -> dict:
-    
+
     if not _is_windows():
         return {**status(dev_build), "ok": False, "error": "unsupported_platform"}
     try:

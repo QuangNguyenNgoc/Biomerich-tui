@@ -1,17 +1,14 @@
-
-
 import sys
 import threading
 import time
 
 from . import win_input, win_windows
 
-
 IS_WINDOWS = sys.platform == "win32"
 
 
 def _roblox_windows():
-    
+
     if not IS_WINDOWS:
         return []
     try:
@@ -21,7 +18,7 @@ def _roblox_windows():
 
 
 def _focus_verified(hwnd, timeout=2.5):
-    
+
     deadline = time.monotonic() + max(0.1, float(timeout))
     while time.monotonic() < deadline:
         win_windows.focus_hwnd(hwnd)
@@ -40,7 +37,7 @@ def _send_action(action):
 
 
 def _run_cycle(action, settle=0.35, throttler=None):
-    
+
     previous_window = win_windows.foreground_hwnd() if IS_WINDOWS else 0
     targets = list(dict.fromkeys(_roblox_windows()))
     successful = 0
@@ -54,8 +51,6 @@ def _run_cycle(action, settle=0.35, throttler=None):
             if not _focus_verified(hwnd):
                 print(f"[AntiAfk] Could not focus Roblox window {hwnd}; skipping it.")
                 continue
-
-
 
             time.sleep(max(0.12, float(settle)))
             if win_windows.foreground_hwnd() != hwnd:
@@ -72,12 +67,14 @@ def _run_cycle(action, settle=0.35, throttler=None):
             throttler.end_input_hold()
 
     if targets:
-        print(f"[AntiAfk] Verified input sent to {successful}/{len(targets)} Roblox windows.")
+        print(
+            f"[AntiAfk] Verified input sent to {successful}/{len(targets)} Roblox windows."
+        )
     return successful, len(targets)
 
 
 def focus_roblox():
-    
+
     targets = _roblox_windows()
     if not targets:
         return False
@@ -98,7 +95,7 @@ class AntiAfk:
         self._throttler = throttler
 
     def set_action_lock(self, action_lock):
-        
+
         self._action_lock = action_lock
 
     def enabled(self):
@@ -142,11 +139,7 @@ class AntiAfk:
         if thread:
             print("[AntiAfk] Stopped.")
         self._stop.set()
-        if (
-            thread
-            and thread.is_alive()
-            and thread is not threading.current_thread()
-        ):
+        if thread and thread.is_alive() and thread is not threading.current_thread():
             thread.join(timeout=0.5)
         if self._thread is thread:
             self._thread = None

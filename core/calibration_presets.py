@@ -1,11 +1,6 @@
-
-
 from __future__ import annotations
 
 from math import gcd
-
-
-
 
 SUGGESTED_DISPLAY_PROFILES = (
     {"width": 1366, "height": 768, "scale": 100},

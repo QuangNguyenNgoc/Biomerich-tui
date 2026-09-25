@@ -130,7 +130,7 @@ if IS_WINDOWS:
         return int(user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT)))
 
     def _send_left_click_atomic():
-        
+
         inputs = (INPUT * 2)()
         inputs[0].type = INPUT_MOUSE
         inputs[0].u.mi = MOUSEINPUT(0, 0, 0, MOUSEEVENTF_LEFTDOWN, 0, 0)
@@ -139,12 +139,11 @@ if IS_WINDOWS:
         sent = int(user32.SendInput(2, inputs, ctypes.sizeof(INPUT)))
         if sent != 2:
 
-
             _send_mouse(MOUSEEVENTF_LEFTUP)
         return sent == 2
 
     def release_mouse_buttons(settle=0.03):
-        
+
         released = _send_mouse(MOUSEEVENTF_LEFTUP) == 1
         if settle > 0:
             time.sleep(settle)
@@ -200,7 +199,7 @@ if IS_WINDOWS:
         return clicked
 
     def look(dx, dy, steps=20, step_delay=0.008):
-        
+
         dx, dy = int(dx), int(dy)
         steps = max(1, int(steps))
         accx = accy = 0.0
@@ -318,6 +317,7 @@ if IS_WINDOWS:
             time.sleep(poll)
 
 else:
+
     def get_cursor_pos():
         return (0, 0)
 

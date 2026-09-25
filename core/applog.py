@@ -1,5 +1,3 @@
-
-
 import logging
 import logging.handlers
 import sys
@@ -10,7 +8,6 @@ logger = logging.getLogger("solrich")
 
 
 class _Tee:
-    
 
     def __init__(self, orig, level):
         self._orig = orig
@@ -47,18 +44,23 @@ class _Tee:
 
 
 def setup(log_dir):
-    
+
     global _configured
     if _configured:
         return
     _configured = True
     try:
         from pathlib import Path
+
         path = Path(log_dir) / "solrich.log"
         handler = logging.handlers.RotatingFileHandler(
-            str(path), maxBytes=2_000_000, backupCount=3, encoding="utf-8")
-        handler.setFormatter(logging.Formatter(
-            "%(asctime)s %(levelname)s %(message)s", "%Y-%m-%d %H:%M:%S"))
+            str(path), maxBytes=2_000_000, backupCount=3, encoding="utf-8"
+        )
+        handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s %(levelname)s %(message)s", "%Y-%m-%d %H:%M:%S"
+            )
+        )
         logger.setLevel(logging.INFO)
         logger.addHandler(handler)
         logger.propagate = False
@@ -68,14 +70,18 @@ def setup(log_dir):
 
         def _excepthook(exc_type, exc, tb):
             logger.error("Uncaught exception", exc_info=(exc_type, exc, tb))
+
         sys.excepthook = _excepthook
 
         if hasattr(threading, "excepthook"):
+
             def _thread_excepthook(args):
                 logger.error(
                     "Uncaught exception in thread %s",
                     getattr(args, "thread", None),
-                    exc_info=(args.exc_type, args.exc_value, args.exc_traceback))
+                    exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+                )
+
             threading.excepthook = _thread_excepthook
 
         logger.info("=== SolRich logging started ===")

@@ -1,5 +1,3 @@
-
-
 import time
 import threading
 from collections import deque
@@ -9,15 +7,21 @@ _entries = deque(maxlen=500)
 _seq = 0
 
 
-
-
 account_provider = None
 account_id_provider = None
 timeline_sink = None
 
 
-def push(text, account=None, kind="info", biome=None, account_id=None,
-         category=None, persist=True, decision=None):
+def push(
+    text,
+    account=None,
+    kind="info",
+    biome=None,
+    account_id=None,
+    category=None,
+    persist=True,
+    decision=None,
+):
     global _seq
     if not text:
         return
@@ -33,8 +37,13 @@ def push(text, account=None, kind="info", biome=None, account_id=None,
             account_id = None
     with _lock:
         _seq += 1
-        entry = {"id": _seq, "ts": time.time(), "text": str(text), "kind": kind,
-                 "account": account}
+        entry = {
+            "id": _seq,
+            "ts": time.time(),
+            "text": str(text),
+            "kind": kind,
+            "account": account,
+        }
         if account_id is not None:
             entry["accountId"] = account_id
         if biome:
@@ -62,6 +71,6 @@ def since(since_id=0):
 
 
 def reset():
-    
+
     with _lock:
         _entries.clear()

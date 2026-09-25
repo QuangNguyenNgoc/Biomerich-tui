@@ -31,29 +31,37 @@ _mutex_guard_stop = None
 _mutex_guard_initialized = None
 _mutex_guard_owns = False
 
+
 def _cookie_header(token):
     return {"Cookie": f".ROBLOSECURITY={token}"}
+
 
 def mask_token(token):
     if not token:
         return ""
     return "•" * 12
 
+
 def _refreshed_cookie(resp, sent_token):
-    
+
     try:
         for c in resp.cookies:
             if c.name != ".ROBLOSECURITY":
                 continue
             new = (c.value or "").strip()
-            if len(new) >= 100 and "WARNING" in new and new != (sent_token or "").strip():
+            if (
+                len(new) >= 100
+                and "WARNING" in new
+                and new != (sent_token or "").strip()
+            ):
                 return new
     except Exception:
         pass
     return ""
 
+
 def validate_token(token):
-    
+
     token = (token or "").strip()
     if not token:
         return {"ok": False, "error": "empty", "definitive": True, "refreshed": ""}
@@ -64,17 +72,37 @@ def validate_token(token):
             timeout=12,
         )
     except requests.RequestException as e:
-        return {"ok": False, "error": f"network: {e}", "definitive": False, "refreshed": ""}
+        return {
+            "ok": False,
+            "error": f"network: {e}",
+            "definitive": False,
+            "refreshed": "",
+        }
 
     refreshed = _refreshed_cookie(r, token)
     if r.status_code == 401:
-        return {"ok": False, "error": "invalid", "definitive": True, "refreshed": refreshed}
+        return {
+            "ok": False,
+            "error": "invalid",
+            "definitive": True,
+            "refreshed": refreshed,
+        }
     if r.status_code != 200:
-        return {"ok": False, "error": f"http_{r.status_code}", "definitive": False, "refreshed": refreshed}
+        return {
+            "ok": False,
+            "error": f"http_{r.status_code}",
+            "definitive": False,
+            "refreshed": refreshed,
+        }
     try:
         data = r.json()
     except ValueError:
-        return {"ok": False, "error": "bad_response", "definitive": False, "refreshed": refreshed}
+        return {
+            "ok": False,
+            "error": "bad_response",
+            "definitive": False,
+            "refreshed": refreshed,
+        }
     return {
         "ok": True,
         "id": data.get("id"),
@@ -83,6 +111,7 @@ def validate_token(token):
         "definitive": True,
         "refreshed": refreshed,
     }
+
 
 def _csrf(token):
     try:
@@ -95,8 +124,10 @@ def _csrf(token):
     except requests.RequestException:
         return ""
 
+
 _last_ticket_error = ""
 _last_refreshed_cookie = ""
+
 
 def get_auth_ticket(token):
     global _last_ticket_error, _last_refreshed_cookie
@@ -143,15 +174,21 @@ def get_auth_ticket(token):
         _last_ticket_error = f"http_{r.status_code}"
     return ticket
 
+
 _share_cache = {}
+
 
 def _resolve_share_link(token, code):
     cached = _share_cache.get(code)
     if cached:
         return cached
     csrf = _csrf(token)
-    headers = {**_BASE_HEADERS, **_cookie_header(token), "X-CSRF-TOKEN": csrf,
-               "Content-Type": "application/json"}
+    headers = {
+        **_BASE_HEADERS,
+        **_cookie_header(token),
+        "X-CSRF-TOKEN": csrf,
+        "Content-Type": "application/json",
+    }
     try:
         r = requests.post(
             "https://apis.roblox.com/sharelinks/v1/resolve-link",
@@ -173,6 +210,7 @@ def _resolve_share_link(token, code):
     }
     _share_cache[code] = info
     return info
+
 
 def parse_private_link(token, link):
     link = (link or "").strip()
@@ -203,6 +241,7 @@ def parse_private_link(token, link):
 
     return None
 
+
 def _place_launcher_url(place_info):
     btid = random.randint(100000, 99999999)
     base = "https://assetgame.roblox.com/game/PlaceLauncher.ashx"
@@ -230,6 +269,7 @@ def _place_launcher_url(place_info):
         }
     return base + "?" + urllib.parse.urlencode(params), btid
 
+
 def _create_multi_instance_mutex():
     import ctypes
     from ctypes import wintypes
@@ -243,7 +283,7 @@ def _create_multi_instance_mutex():
 
 
 def _mutex_guard_worker(stop_event, initialized_event):
-    
+
     global _mutex_guard_owns
     import ctypes
     from ctypes import wintypes
@@ -266,9 +306,6 @@ def _mutex_guard_worker(stop_event, initialized_event):
         if not handle:
             initialized_event.set()
             return
-
-
-
 
         if not already_exists:
             owns_mutex = True
@@ -310,7 +347,7 @@ def _mutex_guard_worker(stop_event, initialized_event):
 
 
 def ensure_multi_instance():
-    
+
     global _mutex_guard_thread, _mutex_guard_stop, _mutex_guard_initialized
     if not IS_WINDOWS:
         return False
@@ -336,6 +373,7 @@ def ensure_multi_instance():
     with _mutex_lock:
         return bool(_mutex_guard_owns)
 
+
 def _launch_protocol(ticket, place_launcher_url, btid):
     proto = (
         "roblox-player:1+launchmode:play"
@@ -349,6 +387,7 @@ def _launch_protocol(ticket, place_launcher_url, btid):
         os.startfile(proto)
         return True
     return False
+
 
 def _launch_home(ticket):
     btid = random.randint(100000, 99999999)
@@ -364,8 +403,9 @@ def _launch_home(ticket):
         return True
     return False
 
+
 def release_multi_instance(stop_detached=False):
-    
+
     global _mutex_guard_thread, _mutex_guard_stop, _mutex_guard_initialized
     if not IS_WINDOWS:
         return
@@ -388,10 +428,12 @@ def _rearm_multi_instance_after_teleport():
     def rearm():
         time.sleep(1.5)
         ensure_multi_instance()
+
     threading.Thread(target=rearm, name="roblox-multi-rearm", daemon=True).start()
 
+
 def teleport_in_place(place_info):
-    
+
     place_id = place_info.get("placeId")
     if not place_id:
         return False
@@ -410,6 +452,7 @@ def teleport_in_place(place_info):
         return True
     return False
 
+
 def launch_account(account, mode="home"):
     token = (account.get("token") or "").strip()
     if not token:
@@ -418,7 +461,11 @@ def launch_account(account, mode="home"):
     info = validate_token(token)
     refreshed = info.get("refreshed") or ""
     if not info.get("ok") and info.get("definitive"):
-        return {"ok": False, "error": "token_" + str(info.get("error")), "refreshed": refreshed}
+        return {
+            "ok": False,
+            "error": "token_" + str(info.get("error")),
+            "refreshed": refreshed,
+        }
 
     if not IS_WINDOWS:
         return {"ok": False, "error": "not_windows", "refreshed": refreshed}
@@ -434,12 +481,15 @@ def launch_account(account, mode="home"):
     if _last_refreshed_cookie:
         refreshed = _last_refreshed_cookie
     if not ticket:
-        return {"ok": False, "error": "no_ticket:" + (_last_ticket_error or "unknown"), "refreshed": refreshed}
+        return {
+            "ok": False,
+            "error": "no_ticket:" + (_last_ticket_error or "unknown"),
+            "refreshed": refreshed,
+        }
 
     name = info.get("name", "")
 
     if mode == "home":
-
 
         previous_roblox_pids = _tray_cleanup.process_snapshot()
         try:

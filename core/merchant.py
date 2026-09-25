@@ -1,5 +1,3 @@
-
-
 import time
 
 from . import win_input, win_windows, ocr, status_events, merchants_data, screenshot
@@ -11,20 +9,23 @@ class MerchantController:
         self.auto = auto
 
     def _merchant_calib(self):
-        return ((self.auto._auto().get("merchants", {}) or {}).get("calib", {}) or {})
+        return (self.auto._auto().get("merchants", {}) or {}).get("calib", {}) or {}
 
     def _merchant_detect(self, ev, duration=5.0, acc_id=None):
-        
+
         general = self._merchant_calib().get("general", {}) or {}
         skip = (general.get("pixels", {}) or {}).get("dialogue_skip")
         name_region = (general.get("regions", {}) or {}).get("merchant_name")
         has_skip = isinstance(skip, (list, tuple)) and len(skip) == 2
         has_region = isinstance(name_region, (list, tuple)) and len(name_region) == 4
         if not has_skip or not has_region:
-            print("[Merchant] Detect skipped: set General calibration "
-                  "(Dialogue Skip point + Merchant Name region).")
+            print(
+                "[Merchant] Detect skipped: set General calibration "
+                "(Dialogue Skip point + Merchant Name region)."
+            )
             status_events.push_event(
-                "Merchant: calibrate Dialogue Skip + Name region", kind="warn", ttl=2.5)
+                "Merchant: calibrate Dialogue Skip + Name region", kind="warn", ttl=2.5
+            )
             return None
 
         sx, sy = int(skip[0]), int(skip[1])
@@ -44,14 +45,12 @@ class MerchantController:
 
         if not ocr.available():
             print("[Merchant] Detect: OCR not available — cannot read merchant name.")
-            status_events.push_event("Merchant: OCR not installed", kind="warn", ttl=2.5)
+            status_events.push_event(
+                "Merchant: OCR not installed", kind="warn", ttl=2.5
+            )
             self._close_unknown_dialogue(ev)
             return None
         x, y, w, h = (int(v) for v in name_region)
-
-
-
-
 
         try:
             win_input.move_to(max(5, x - 240), max(5, y - 140), duration=0.08)
@@ -81,13 +80,15 @@ class MerchantController:
                 print(f"[Merchant] Count increment failed: {e}")
             self._merchant_arrival(mid, name, acc_id, ev)
             return mid
-        print(f"[Merchant] No merchant matched (best score {score:.2f}, reads={reads!r}).")
+        print(
+            f"[Merchant] No merchant matched (best score {score:.2f}, reads={reads!r})."
+        )
         status_events.push_event("Merchant: no match", kind="bad", ttl=2.5)
         self._close_unknown_dialogue(ev)
         return None
 
     def _close_unknown_dialogue(self, ev):
-        
+
         seen = set()
         for mid in ("mari", "jester", "rin"):
             pos = self._merchant_point(mid, "leave_button")
@@ -143,14 +144,18 @@ class MerchantController:
         self._click_xy(x + w // 2, y + h // 2, settle, ev)
 
     def _merchant_shop_ready(self):
-        pts = all(self._merchant_point("shop", k)
-                  for k in ("buy_button", "amount_box", "set_max_button", "close_button"))
-        regs = all(self._merchant_region("shop", k)
-                   for k in merchants_data.required_shop_region_keys())
+        pts = all(
+            self._merchant_point("shop", k)
+            for k in ("buy_button", "amount_box", "set_max_button", "close_button")
+        )
+        regs = all(
+            self._merchant_region("shop", k)
+            for k in merchants_data.required_shop_region_keys()
+        )
         return pts and regs
 
     def _autobuy_wanted(self, mid, acc_id):
-        
+
         try:
             entry = self.auto.config.merchant_autobuy(acc_id, mid)
         except Exception:
@@ -158,9 +163,13 @@ class MerchantController:
         return merchant_logic.armed_autobuy_items(entry)
 
     def _merchant_arrival(self, mid, name, acc_id, ev):
-        
+
         shot_on = self.auto._notif_on("merchantScreenshot")
-        wanted = self._autobuy_wanted(mid, acc_id) if mid in merchants_data.AUTOBUY_MERCHANTS else {}
+        wanted = (
+            self._autobuy_wanted(mid, acc_id)
+            if mid in merchants_data.AUTOBUY_MERCHANTS
+            else {}
+        )
         buy_on = bool(wanted) and self._merchant_shop_ready()
         if wanted and not buy_on:
             print("[Merchant] Auto Buy skipped: Merchant Shop calibration incomplete.")
@@ -168,7 +177,9 @@ class MerchantController:
         open_btn = self._merchant_point(mid, "open_button") if has_shop else None
         open_shop = has_shop and (shot_on or buy_on) and open_btn is not None
         if has_shop and (shot_on or buy_on) and open_btn is None:
-            print(f"[Merchant] '{mid}' Open Button not calibrated — staying in the dialogue.")
+            print(
+                f"[Merchant] '{mid}' Open Button not calibrated — staying in the dialogue."
+            )
 
         if not open_shop:
             image = self._merchant_shot(acc_id) if shot_on else None
@@ -176,7 +187,9 @@ class MerchantController:
             if self._merchant_point(mid, "leave_button"):
                 self._merchant_click(mid, "leave_button", 1.0, ev)
             else:
-                print(f"[Merchant] '{mid}' Leave Button not calibrated — dialogue stays open.")
+                print(
+                    f"[Merchant] '{mid}' Leave Button not calibrated — dialogue stays open."
+                )
             return
 
         self._merchant_click(mid, "open_button", 3.0, ev)
@@ -192,12 +205,15 @@ class MerchantController:
         self._merchant_click("shop", "close_button", 2.0, ev)
 
     def _merchant_autobuy(self, mid, acc_id, ev):
-        
+
         if not ocr.available():
             print("[Merchant] Auto Buy: OCR not available.")
             return
-        status_events.push_event(f"Merchant Auto Buy · {merchants_data.detect_merchant_name(mid)}",
-                                 kind="info", ttl=2.5)
+        status_events.push_event(
+            f"Merchant Auto Buy · {merchants_data.detect_merchant_name(mid)}",
+            kind="info",
+            ttl=2.5,
+        )
         use_title = self._merchant_region("shop", "item_name") is not None
         bought = 0
         for slot_key in merchants_data.ITEM_SLOT_KEYS:
@@ -214,37 +230,55 @@ class MerchantController:
                 self._merchant_click_region("shop", slot_key, 1.5, ev)
                 item, score = self._identify_shop_item(mid)
                 if not item:
-                    print(f"[Merchant] Auto Buy: slot '{slot_key}' not identified from title.")
+                    print(
+                        f"[Merchant] Auto Buy: slot '{slot_key}' not identified from title."
+                    )
                     continue
-                print(f"[Merchant] Auto Buy: slot '{slot_key}' → '{item}' "
-                      f"(title, score {score:.2f}).")
+                print(
+                    f"[Merchant] Auto Buy: slot '{slot_key}' → '{item}' "
+                    f"(title, score {score:.2f})."
+                )
                 if item not in wanted:
                     continue
                 bought += self._merchant_buy_selected(
-                    mid, item, wanted[item]["amount"], acc_id, ev,
-                    buy_all=wanted[item]["all"])
+                    mid,
+                    item,
+                    wanted[item]["amount"],
+                    acc_id,
+                    ev,
+                    buy_all=wanted[item]["all"],
+                )
             else:
                 x, y, w, h = box
                 reads = ocr.read_region_variants(x, y, w, h, color_boost=True)
                 item, score = self._match_reads(mid, reads)
                 if not item or item not in wanted:
                     continue
-                print(f"[Merchant] Auto Buy: slot '{slot_key}' → '{item}' "
-                      f"(tab, score {score:.2f}).")
+                print(
+                    f"[Merchant] Auto Buy: slot '{slot_key}' → '{item}' "
+                    f"(tab, score {score:.2f})."
+                )
                 self._merchant_click_region("shop", slot_key, 1.5, ev)
                 bought += self._merchant_buy_selected(
-                    mid, item, wanted[item]["amount"], acc_id, ev,
-                    buy_all=wanted[item]["all"])
+                    mid,
+                    item,
+                    wanted[item]["amount"],
+                    acc_id,
+                    ev,
+                    buy_all=wanted[item]["all"],
+                )
         if not bought:
-            print("[Merchant] Auto Buy: nothing bought "
-                  f"at {merchants_data.detect_merchant_name(mid)}.")
+            print(
+                "[Merchant] Auto Buy: nothing bought "
+                f"at {merchants_data.detect_merchant_name(mid)}."
+            )
 
     @staticmethod
     def _match_reads(mid, reads):
         return detection.match_reads(mid, reads)
 
     def _identify_shop_item(self, mid):
-        
+
         box = self._merchant_region("shop", "item_name")
         if not box:
             return None, 0.0
@@ -260,7 +294,7 @@ class MerchantController:
         return detection.parse_stock_text(text, confident_only)
 
     def _read_stock_left(self):
-        
+
         box = self._merchant_region("shop", "amount_label")
         if not box or not ocr.available():
             return None
@@ -270,17 +304,21 @@ class MerchantController:
             for txt in reads:
                 n = self._parse_stock_text(txt, confident_only=confident)
                 if n is not None and n >= 0:
-                    print(f"[Merchant] Stock label read '{txt}' → {n}"
-                          f"{'' if confident else ' (fallback)'}")
+                    print(
+                        f"[Merchant] Stock label read '{txt}' → {n}"
+                        f"{'' if confident else ' (fallback)'}"
+                    )
                     return n
         print(f"[Merchant] Stock label unreadable (reads={reads!r}).")
         return None
 
     def _merchant_buy_selected(self, mid, item, want, acc_id, ev, buy_all=False):
-        
+
         stock = self._read_stock_left()
         if stock is None:
-            status_events.push_event(f"Auto Buy: stock unreadable · {item}", kind="warn", ttl=2.5)
+            status_events.push_event(
+                f"Auto Buy: stock unreadable · {item}", kind="warn", ttl=2.5
+            )
             print(f"[Merchant] Auto Buy: stock label unreadable — skipping '{item}'.")
             return 0
         if stock <= 0:
@@ -299,18 +337,22 @@ class MerchantController:
         if buy_all:
             before, left = "All", "All"
         else:
-            before, left = self.auto.config.decrement_merchant_autobuy(acc_id, mid, item, purchased)
+            before, left = self.auto.config.decrement_merchant_autobuy(
+                acc_id, mid, item, purchased
+            )
         try:
             self.auto.config.add_merchant_buy(acc_id, mid, item, purchased)
         except Exception as e:
             print(f"[Merchant] Buy log write failed: {e}")
-        print(f"[Merchant] Auto Buy: bought {purchased}× '{item}' ({left} still wanted).")
+        print(
+            f"[Merchant] Auto Buy: bought {purchased}× '{item}' ({left} still wanted)."
+        )
         status_events.push_event(f"Auto Buy: {purchased}× {item}", kind="good", ttl=2.5)
         self.auto._notify_autobuy(acc_id, mid, item, purchased, before, left)
         return purchased
 
     def _merchant_shot(self, acc_id=None):
-        
+
         if not self.auto._notif_on("merchantScreenshot"):
             return None
         try:

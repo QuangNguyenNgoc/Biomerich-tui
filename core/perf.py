@@ -42,7 +42,10 @@ if IS_WINDOWS:
         ]
 
     class FILETIME(ctypes.Structure):
-        _fields_ = [("dwLowDateTime", wintypes.DWORD), ("dwHighDateTime", wintypes.DWORD)]
+        _fields_ = [
+            ("dwLowDateTime", wintypes.DWORD),
+            ("dwHighDateTime", wintypes.DWORD),
+        ]
 
     class MEMORYSTATUSEX(ctypes.Structure):
         _fields_ = [
@@ -57,20 +60,36 @@ if IS_WINDOWS:
             ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
         ]
 
-    psapi.EnumProcesses.argtypes = (ctypes.POINTER(wintypes.DWORD), wintypes.DWORD, ctypes.POINTER(wintypes.DWORD))
+    psapi.EnumProcesses.argtypes = (
+        ctypes.POINTER(wintypes.DWORD),
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+    )
     psapi.EnumProcesses.restype = wintypes.BOOL
     psapi.EmptyWorkingSet.argtypes = (wintypes.HANDLE,)
     psapi.EmptyWorkingSet.restype = wintypes.BOOL
-    psapi.GetProcessMemoryInfo.argtypes = (wintypes.HANDLE, ctypes.POINTER(PROCESS_MEMORY_COUNTERS), wintypes.DWORD)
+    psapi.GetProcessMemoryInfo.argtypes = (
+        wintypes.HANDLE,
+        ctypes.POINTER(PROCESS_MEMORY_COUNTERS),
+        wintypes.DWORD,
+    )
     psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
     kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
     kernel32.OpenProcess.restype = wintypes.HANDLE
     kernel32.GetProcessTimes.argtypes = (
-        wintypes.HANDLE, ctypes.POINTER(FILETIME), ctypes.POINTER(FILETIME),
-        ctypes.POINTER(FILETIME), ctypes.POINTER(FILETIME))
+        wintypes.HANDLE,
+        ctypes.POINTER(FILETIME),
+        ctypes.POINTER(FILETIME),
+        ctypes.POINTER(FILETIME),
+        ctypes.POINTER(FILETIME),
+    )
     kernel32.GetProcessTimes.restype = wintypes.BOOL
     kernel32.QueryFullProcessImageNameW.argtypes = (
-        wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD))
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.LPWSTR,
+        ctypes.POINTER(wintypes.DWORD),
+    )
     kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
 
     def _open(pid):
@@ -104,8 +123,9 @@ if IS_WINDOWS:
 
     def _proc_time(handle):
         c, e, k, u = FILETIME(), FILETIME(), FILETIME(), FILETIME()
-        if kernel32.GetProcessTimes(handle, ctypes.byref(c), ctypes.byref(e),
-                                    ctypes.byref(k), ctypes.byref(u)):
+        if kernel32.GetProcessTimes(
+            handle, ctypes.byref(c), ctypes.byref(e), ctypes.byref(k), ctypes.byref(u)
+        ):
             kt = (k.dwHighDateTime << 32) | k.dwLowDateTime
             ut = (u.dwHighDateTime << 32) | u.dwLowDateTime
             return kt + ut
@@ -161,13 +181,18 @@ if IS_WINDOWS:
         return 0
 
     def _purge_standby_list():
-        
+
         try:
             enabled = ctypes.c_byte(0)
-            ntdll.RtlAdjustPrivilege(SE_PROFILE_SINGLE_PROCESS_PRIVILEGE, 1, 0, ctypes.byref(enabled))
+            ntdll.RtlAdjustPrivilege(
+                SE_PROFILE_SINGLE_PROCESS_PRIVILEGE, 1, 0, ctypes.byref(enabled)
+            )
             command = ctypes.c_int(MEMORY_PURGE_STANDBY_LIST)
             status = ntdll.NtSetSystemInformation(
-                SYSTEM_MEMORY_LIST_INFORMATION, ctypes.byref(command), ctypes.sizeof(command))
+                SYSTEM_MEMORY_LIST_INFORMATION,
+                ctypes.byref(command),
+                ctypes.sizeof(command),
+            )
             return int(status) == 0
         except Exception as e:
             print(f"[Perf] Standby purge failed: {e}")
@@ -178,18 +203,23 @@ if IS_WINDOWS:
     QUOTA_LIMITS_HARDWS_MAX_DISABLE = 0x00000008
 
     kernel32.SetProcessWorkingSetSizeEx.argtypes = (
-        wintypes.HANDLE, ctypes.c_size_t, ctypes.c_size_t, wintypes.DWORD)
+        wintypes.HANDLE,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        wintypes.DWORD,
+    )
     kernel32.SetProcessWorkingSetSizeEx.restype = wintypes.BOOL
 
     def cap_working_set(pids, max_bytes):
-        
+
         max_bytes = max(64 * 1048576, int(max_bytes))
         min_bytes = min(32 * 1048576, max_bytes // 2)
         flags = QUOTA_LIMITS_HARDWS_MAX_ENABLE | QUOTA_LIMITS_HARDWS_MIN_DISABLE
         count = 0
-        for pid in (pids or []):
+        for pid in pids or []:
             h = kernel32.OpenProcess(
-                PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_QUOTA, False, int(pid))
+                PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_QUOTA, False, int(pid)
+            )
             if not h:
                 continue
             try:
@@ -200,16 +230,19 @@ if IS_WINDOWS:
         return count
 
     def uncap_working_set(pids):
-        
+
         flags = QUOTA_LIMITS_HARDWS_MAX_DISABLE | QUOTA_LIMITS_HARDWS_MIN_DISABLE
         count = 0
-        for pid in (pids or []):
+        for pid in pids or []:
             h = kernel32.OpenProcess(
-                PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_QUOTA, False, int(pid))
+                PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_QUOTA, False, int(pid)
+            )
             if not h:
                 continue
             try:
-                if kernel32.SetProcessWorkingSetSizeEx(h, 32 * 1048576, 1536 * 1048576, flags):
+                if kernel32.SetProcessWorkingSetSizeEx(
+                    h, 32 * 1048576, 1536 * 1048576, flags
+                ):
                     count += 1
             finally:
                 kernel32.CloseHandle(h)
@@ -223,7 +256,8 @@ if IS_WINDOWS:
             if pid <= 4:
                 continue
             h = kernel32.OpenProcess(
-                PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_QUOTA, False, pid)
+                PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_QUOTA, False, pid
+            )
             if not h:
                 continue
             try:
@@ -238,9 +272,11 @@ if IS_WINDOWS:
         avail_after = _avail_ram()
         freed = max(0, avail_after - avail_before)
 
-        print(f"[Perf] System trim: {trimmed} process(es), "
-              f"standby purge={'yes' if purged else 'no (needs admin)'}, "
-              f"freed {freed / 1048576:.0f} MB.")
+        print(
+            f"[Perf] System trim: {trimmed} process(es), "
+            f"standby purge={'yes' if purged else 'no (needs admin)'}, "
+            f"freed {freed / 1048576:.0f} MB."
+        )
         return {
             "ok": True,
             "count": trimmed,
@@ -251,6 +287,7 @@ if IS_WINDOWS:
         }
 
 else:
+
     def roblox_pids():
         return []
 
@@ -271,7 +308,7 @@ else:
 
 
 def process_counters(pids):
-    
+
     if not IS_WINDOWS:
         return {}
     counters = {}
@@ -294,6 +331,7 @@ def process_counters(pids):
         finally:
             kernel32.CloseHandle(handle)
     return counters
+
 
 def snapshot(accounts):
     ncores = os.cpu_count() or 1
@@ -335,10 +373,14 @@ def snapshot(accounts):
         if not name:
             unnamed += 1
             name = f"Roblox #{unnamed}"
-        instances.append({
-            "pid": pid, "name": name,
-            "ramBytes": m["ramBytes"], "cpuPercent": m["cpuPercent"],
-        })
+        instances.append(
+            {
+                "pid": pid,
+                "name": name,
+                "ramBytes": m["ramBytes"],
+                "cpuPercent": m["cpuPercent"],
+            }
+        )
         total_ram += m["ramBytes"]
         total_cpu += m["cpuPercent"]
 

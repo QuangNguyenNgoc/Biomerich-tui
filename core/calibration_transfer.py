@@ -1,12 +1,9 @@
-
-
 from __future__ import annotations
 
 import json
 import math
 
 from . import extra_calibrations, fishing_presets, merchants_data, presets
-
 
 FORMAT = "solrich-calibrations"
 SCHEMA_VERSION = 1
@@ -86,7 +83,9 @@ def export_payload(automation):
             "pixels": dict(automation.get("pixels") or {}),
             "regions": {
                 "first_item_region": automation.get("firstItemRegion"),
-                "autopop_amount_region": (automation.get("autopop") or {}).get("amountRegion"),
+                "autopop_amount_region": (automation.get("autopop") or {}).get(
+                    "amountRegion"
+                ),
             },
         },
         "fishing": {
@@ -96,8 +95,6 @@ def export_payload(automation):
         "merchants": merchants,
         "extra": extra,
     }
-
-
 
     def clean(expected, supplied):
         if isinstance(expected, int):
@@ -176,6 +173,7 @@ def inspect_text(text):
         return 0
 
     valid_count = count_valid(normalized)
+
     def count_expected(node):
         if isinstance(node, int):
             return 1
@@ -197,7 +195,7 @@ def inspect_text(text):
 
 
 def apply_to_automation(automation, normalized):
-    
+
     if not isinstance(automation, dict) or not isinstance(normalized, dict):
         return 0
     applied = 0
@@ -238,14 +236,18 @@ def apply_to_automation(automation, normalized):
     for group, values in merchant_source.items():
         group_target = merchant_target.setdefault(group, {})
         merge(group_target.setdefault("pixels", {}), (values or {}).get("pixels") or {})
-        merge(group_target.setdefault("regions", {}), (values or {}).get("regions") or {})
+        merge(
+            group_target.setdefault("regions", {}), (values or {}).get("regions") or {}
+        )
 
     extra_source = normalized.get("extra") or {}
     extra_target = automation.setdefault("calib", {})
     for group, values in extra_source.items():
         group_target = extra_target.setdefault(group, {})
         merge(group_target.setdefault("pixels", {}), (values or {}).get("pixels") or {})
-        merge(group_target.setdefault("regions", {}), (values or {}).get("regions") or {})
+        merge(
+            group_target.setdefault("regions", {}), (values or {}).get("regions") or {}
+        )
     return applied
 
 

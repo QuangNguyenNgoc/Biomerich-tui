@@ -28,7 +28,7 @@ def _run_for_pids(pids, fn):
 
 
 def close_all_roblox():
-    
+
     if not IS_WINDOWS:
         return {
             "ok": False,

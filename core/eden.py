@@ -1,5 +1,3 @@
-
-
 import time
 
 from . import win_input
@@ -39,7 +37,7 @@ class EdenController:
             self._persist.pop(acc_id, None)
 
     def pause(self, acc_id):
-        
+
         self._flush_clock(acc_id)
 
     def _accrue(self, acc_id):
@@ -50,7 +48,7 @@ class EdenController:
             self._persist[acc_id] = time.monotonic()
 
     def run_spam(self, acc_id, ev):
-        
+
         a = self.auto
         self._accrue(acc_id)
         pt = a._eden_click_point()
