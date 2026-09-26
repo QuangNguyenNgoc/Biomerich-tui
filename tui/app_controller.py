@@ -67,6 +67,15 @@ class AppController:
         activity_log.account_id_provider = self._resolve_account_id
         activity_log.timeline_sink = account_timeline.record_activity
 
+        # --- TUI Event Hooks ---
+        from core import event_log
+        event_log.on_update_hook = lambda: self._emit("logs_updated")
+        activity_log.on_update_hook = lambda: self._emit("logs_updated")
+        if hasattr(self.engine, "aura"):
+            self.engine.aura.on_update_hook = lambda: self._emit("logs_updated")
+        self.engine.on_accounts_changed_hook = lambda: self._emit("accounts_changed")
+
+
         # --- Performance subsystems ---
         from core import ram_trim, throttle as throttle_mod
         from core import performance_benchmark as perf_bench_mod

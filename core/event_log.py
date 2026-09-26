@@ -1,3 +1,5 @@
+on_update_hook = None
+
 
 
 import base64
@@ -120,6 +122,11 @@ def maybe_log(message, image_bytes=None, account=None) -> None:
         })
         if len(_log) > _MAX:
             del _log[: len(_log) - _MAX]
+        if on_update_hook:
+            try:
+                on_update_hook()
+            except Exception:
+                pass
 
 
 def get(since_id=0) -> list:

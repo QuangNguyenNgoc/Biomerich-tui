@@ -1,3 +1,5 @@
+on_update_hook = None
+
 import time
 import threading
 from collections import deque

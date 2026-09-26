@@ -74,6 +74,7 @@ class MacroEngine:
         self.time = TimeTracker(config)
         self._runtime_cache = []
         self._runtime_ts = 0.0
+        self.on_accounts_changed_hook = None
         self._pending_rare_pings = {}
         self._rare_ping_seq = 0
         self.rare_ping_notifier = None
@@ -119,6 +120,8 @@ class MacroEngine:
             return self._runtime_cache
         if (now - self._runtime_ts) < 2.5 and self._runtime_cache:
             return self._runtime_cache
+            
+        old_cache = list(self._runtime_cache) if self._runtime_cache else []
 
         try:
             resolved = win_windows.resolve_accounts(self.config.enabled_accounts())

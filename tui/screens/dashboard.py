@@ -19,52 +19,33 @@ class DashboardScreen(VerticalScroll):
 
     DEFAULT_CSS = """
     DashboardScreen {
-        layout: grid;
-        grid-size: 1 3;
-        grid-gutter: 1;
         padding: 1;
-    }
-
-    #accounts-container {
-        row-span: 1;
-        column-span: 1;
-        height: auto;
-        border: solid $accent;
-        padding: 1;
-    }
-    
-    .panel-title {
-        text-style: bold;
-        color: $text;
-        padding-bottom: 1;
     }
 
     #dash-accounts-table {
         height: auto;
-        max-height: 10;
+        max-height: 14;
+        border: solid $accent;
+        margin-bottom: 1;
     }
 
     #stats-panel {
-        row-span: 1; 
-        column-span: 1; 
-        height: auto; 
-        border: solid $warning; 
+        height: auto;
+        border: solid $warning;
         padding: 1;
+        margin-bottom: 1;
     }
 
     #activity-panel {
-        row-span: 1; 
-        column-span: 1; 
-        height: 1fr; 
-        border: solid $success; 
+        height: 1fr;
+        min-height: 5;
+        border: solid $success;
         padding: 1;
     }
     """
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="accounts-container"):
-            yield Label("Accounts", classes="panel-title")
-            yield DataTable(id="dash-accounts-table", cursor_type="none")
+        yield DataTable(id="dash-accounts-table", cursor_type="none")
         yield Static(id="stats-panel")
         yield Static(id="activity-panel")
 

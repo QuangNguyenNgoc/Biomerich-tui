@@ -202,6 +202,7 @@ class AuraController:
 
     def __init__(self, catalog=None):
         self.catalog = catalog or AuraCatalog()
+        self.on_update_hook = None
         self._last_real = {}
         self._log = []
         self._log_seq = 0
@@ -263,4 +264,9 @@ class AuraController:
             self._log.append(event)
             if len(self._log) > 200:
                 self._log = self._log[-200:]
+            if self.on_update_hook:
+                try:
+                    self.on_update_hook()
+                except Exception:
+                    pass
             return dict(event)
