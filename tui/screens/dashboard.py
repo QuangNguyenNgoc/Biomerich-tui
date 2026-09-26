@@ -2,8 +2,10 @@
 
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
-from textual.widgets import Static, Button, DataTable
+from textual.widgets import Static, Button, DataTable, Label
 from textual.containers import Vertical
+from textual import on
+from tui.messages import UpdateLogsMessage, UpdateAccountsMessage, AppReadyMessage
 
 from rich.panel import Panel
 
@@ -17,33 +19,52 @@ class DashboardScreen(VerticalScroll):
 
     DEFAULT_CSS = """
     DashboardScreen {
+        layout: grid;
+        grid-size: 1 3;
+        grid-gutter: 1;
         padding: 1;
+    }
+
+    #accounts-container {
+        row-span: 1;
+        column-span: 1;
+        height: auto;
+        border: solid $accent;
+        padding: 1;
+    }
+    
+    .panel-title {
+        text-style: bold;
+        color: $text;
+        padding-bottom: 1;
     }
 
     #dash-accounts-table {
         height: auto;
-        max-height: 14;
-        border: solid $accent;
-        margin-bottom: 1;
+        max-height: 10;
     }
 
     #stats-panel {
-        height: auto;
-        border: solid $warning;
+        row-span: 1; 
+        column-span: 1; 
+        height: auto; 
+        border: solid $warning; 
         padding: 1;
-        margin-bottom: 1;
     }
 
     #activity-panel {
-        height: 1fr;
-        min-height: 5;
-        border: solid $success;
+        row-span: 1; 
+        column-span: 1; 
+        height: 1fr; 
+        border: solid $success; 
         padding: 1;
     }
     """
 
     def compose(self) -> ComposeResult:
-        yield DataTable(id="dash-accounts-table", cursor_type="none")
+        with Vertical(id="accounts-container"):
+            yield Label("Accounts", classes="panel-title")
+            yield DataTable(id="dash-accounts-table", cursor_type="none")
         yield Static(id="stats-panel")
         yield Static(id="activity-panel")
 
@@ -58,7 +79,27 @@ class DashboardScreen(VerticalScroll):
         self._prev_activity_text = None
 
         self._refresh_panels()
-        self.set_interval(1.0, self._refresh_panels)
+        self._stats_timer = self.set_interval(1.0, self._refresh_stats_timer_tick)
+        if self.app.controller and not self.app.controller.is_engine_running():
+            self._stats_timer.pause()
+
+    def _refresh_stats_timer_tick(self) -> None:
+        ctrl = self.app.controller
+        if ctrl is None:
+            return
+        self._refresh_stats_panel(ctrl)
+
+    @on(UpdateLogsMessage)
+    def on_update_logs(self, message: UpdateLogsMessage) -> None:
+        ctrl = self.app.controller
+        if ctrl:
+            self._refresh_activity_panel(ctrl)
+
+    @on(UpdateAccountsMessage)
+    def on_update_accounts(self, message: UpdateAccountsMessage) -> None:
+        ctrl = self.app.controller
+        if ctrl:
+            self._refresh_accounts_table(ctrl)
 
     def _refresh_panels(self) -> None:
         ctrl = self.app.controller
@@ -84,13 +125,15 @@ class DashboardScreen(VerticalScroll):
             status = "Online" if acc.get("online") else "Offline"
             biome = acc.get("currentBiome") or "-"
             hwnd = "Bound" if acc.get("hwndKnown") else "Unbound"
-            row_data.append((
-                str(i),
-                acc.get("name", "?"),
-                status,
-                biome,
-                hwnd,
-            ))
+            row_data.append(
+                (
+                    str(i),
+                    acc.get("name", "?"),
+                    status,
+                    biome,
+                    hwnd,
+                )
+            )
 
         # Quick hash: convert to tuple for comparison
         data_hash = tuple(row_data)
@@ -149,7 +192,11 @@ class DashboardScreen(VerticalScroll):
         if new_text != self._prev_stats_text:
             self._prev_stats_text = new_text
             stats_panel.update(
-                Panel(new_text, title="[bold]Stats & Tracking[/bold]", border_style="yellow")
+                Panel(
+                    new_text,
+                    title="[bold]Stats & Tracking[/bold]",
+                    border_style="yellow",
+                )
             )
 
     def _refresh_activity_panel(self, ctrl) -> None:
@@ -196,3 +243,15 @@ class DashboardScreen(VerticalScroll):
         self._prev_accounts_hash = None
         self._prev_stats_text = None
         self._refresh_panels()
+        if ctrl.is_engine_running():
+            self._stats_timer.resume()
+        else:
+            self._stats_timer.pause()
+
+    @on(AppReadyMessage)
+    def on_app_ready(self, message: AppReadyMessage) -> None:
+        self._refresh_panels()
+        if self.app.controller and self.app.controller.is_engine_running():
+            self._stats_timer.resume()
+        else:
+            self._stats_timer.pause()

@@ -124,6 +124,8 @@ class SolRichTUI(App):
         self._init_controller()
         self._switch_content("dashboard")
         self._start_status_polling()
+        from tui.messages import AppReadyMessage
+        self.post_message(AppReadyMessage())
 
     def _init_controller(self) -> None:
         """Initialize the AppController (core business logic)."""
@@ -134,6 +136,10 @@ class SolRichTUI(App):
             self.controller.on("engine_started", self._on_engine_state_change)
             self.controller.on("engine_stopped", self._on_engine_state_change)
             self.controller.on("mode_changed", self._on_mode_change)
+            
+            # --- P3 Event Routing ---
+            self.controller.on("logs_updated", self._on_logs_updated)
+            self.controller.on("accounts_changed", self._on_accounts_changed)
             # Start background services after TUI is ready
             self.controller.startup_services()
         except Exception as e:
@@ -218,6 +224,15 @@ class SolRichTUI(App):
         """Callback when engine mode changes."""
         self.notify(f"Mode: {mode}")
         self._poll_status()
+
+    def _on_logs_updated(self) -> None:
+        from tui.messages import UpdateLogsMessage
+        self.post_message(UpdateLogsMessage())
+
+    def _on_accounts_changed(self) -> None:
+        from tui.messages import UpdateAccountsMessage
+        self.post_message(UpdateAccountsMessage())
+
 
     def action_quit(self) -> None:
         """Clean shutdown."""

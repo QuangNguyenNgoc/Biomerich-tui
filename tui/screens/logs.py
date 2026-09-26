@@ -4,6 +4,8 @@ from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.containers import VerticalScroll
 from textual.widgets import Static, RichLog, TabbedContent, TabPane
+from textual import on
+from tui.messages import UpdateLogsMessage, AppReadyMessage
 from textual.containers import Vertical
 
 from rich.panel import Panel
@@ -50,7 +52,11 @@ class LogsScreen(VerticalScroll):
         self._last_activity_id = 0
         self._last_event_id = 0
         self._last_aura_id = 0
-        self.set_interval(1.0, self._poll_logs)
+        self._poll_logs()
+
+    @on(UpdateLogsMessage)
+    def on_update_logs(self, message: UpdateLogsMessage) -> None:
+        self._poll_logs()
 
     def _poll_logs(self) -> None:
         ctrl = self.app.controller
@@ -150,3 +156,7 @@ class LogsScreen(VerticalScroll):
                     aura_log.write(text)
         except Exception:
             pass
+
+    @on(AppReadyMessage)
+    def on_app_ready(self, message: AppReadyMessage) -> None:
+        self._poll_logs()
