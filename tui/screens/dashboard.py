@@ -13,9 +13,6 @@ from rich.panel import Panel
 class DashboardScreen(VerticalScroll):
     """Main dashboard showing engine status, active biome, and account overview."""
 
-    BINDINGS = [
-        ("f5", "toggle_engine", "Start/Stop Macro"),
-    ]
 
     DEFAULT_CSS = """
     DashboardScreen {
@@ -80,8 +77,6 @@ class DashboardScreen(VerticalScroll):
 
         self._refresh_panels()
         self._stats_timer = self.set_interval(1.0, self._refresh_stats_timer_tick)
-        if self.app.controller and not self.app.controller.is_engine_running():
-            self._stats_timer.pause()
 
     def _refresh_stats_timer_tick(self) -> None:
         ctrl = self.app.controller
@@ -225,33 +220,7 @@ class DashboardScreen(VerticalScroll):
                 Panel(new_text, title="Recent Activity", border_style="green")
             )
 
-    def action_toggle_engine(self) -> None:
-        ctrl = self.app.controller
-        if ctrl is None:
-            return
-        if ctrl.is_engine_running():
-            ctrl.stop_engine()
-            self.notify("Macro stopped", severity="warning")
-        else:
-            result = ctrl.start_engine()
-            if result.get("ok"):
-                self.notify("Macro started!", severity="information")
-            else:
-                errors = result.get("errors", ["Unknown error"])
-                self.notify(f"Failed: {errors[0]}", severity="error")
-        # Force immediate refresh after toggle
-        self._prev_accounts_hash = None
-        self._prev_stats_text = None
-        self._refresh_panels()
-        if ctrl.is_engine_running():
-            self._stats_timer.resume()
-        else:
-            self._stats_timer.pause()
 
     @on(AppReadyMessage)
     def on_app_ready(self, message: AppReadyMessage) -> None:
         self._refresh_panels()
-        if self.app.controller and self.app.controller.is_engine_running():
-            self._stats_timer.resume()
-        else:
-            self._stats_timer.pause()
