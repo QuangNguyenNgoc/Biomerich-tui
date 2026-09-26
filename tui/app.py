@@ -125,7 +125,7 @@ class SolRichTUI(App):
         self._switch_content("dashboard")
         self._start_status_polling()
         from tui.messages import AppReadyMessage
-        self.post_message(AppReadyMessage())
+        self._broadcast_to_children(AppReadyMessage())
 
     def _init_controller(self) -> None:
         """Initialize the AppController (core business logic)."""
@@ -225,13 +225,22 @@ class SolRichTUI(App):
         self.notify(f"Mode: {mode}")
         self._poll_status()
 
+    def _broadcast_to_children(self, message) -> None:
+        try:
+            from textual.widgets import ContentSwitcher
+            switcher = self.query_one("#content-area", ContentSwitcher)
+            for child in switcher.children:
+                child.post_message(message)
+        except Exception:
+            pass
+
     def _on_logs_updated(self) -> None:
         from tui.messages import UpdateLogsMessage
-        self.post_message(UpdateLogsMessage())
+        self._broadcast_to_children(UpdateLogsMessage())
 
     def _on_accounts_changed(self) -> None:
         from tui.messages import UpdateAccountsMessage
-        self.post_message(UpdateAccountsMessage())
+        self._broadcast_to_children(UpdateAccountsMessage())
 
 
     def action_quit(self) -> None:
