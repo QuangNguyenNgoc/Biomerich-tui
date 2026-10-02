@@ -79,10 +79,7 @@ class DashboardScreen(VerticalScroll):
         self._stats_timer = self.set_interval(1.0, self._refresh_stats_timer_tick)
 
     def _refresh_stats_timer_tick(self) -> None:
-        ctrl = self.app.controller
-        if ctrl is None:
-            return
-        self._refresh_stats_panel(ctrl)
+        self._refresh_panels()
 
     @on(UpdateLogsMessage)
     def on_update_logs(self, message: UpdateLogsMessage) -> None:
